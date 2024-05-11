@@ -1,0 +1,7 @@
+keys:
+  - &james "age187xlhmks2tcymsnw32jzzxr6lryejma4602e3v0jlrsra5u64pdsxal44a"
+
+creation_rules:
+  - path_regex: terraform/secrets.yaml$
+    key_groups:
+    - age: [ *james ]

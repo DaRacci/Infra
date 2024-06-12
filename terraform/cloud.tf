@@ -10,7 +10,7 @@ resource "digitalocean_firewall" "chomp_firewall" {
   inbound_rule {
     protocol         = "tcp"
     port_range       = "22"
-    source_addresses = data.sops_file.secrets.data["IPS"]
+    source_addresses = local.permissive_ips
   }
 
   inbound_rule {
@@ -41,18 +41,18 @@ resource "digitalocean_firewall" "chomp_firewall" {
   inbound_rule {
     protocol         = "tcp"
     port_range       = "8080"
-    source_addresses = data.sops_file.secrets.data["IPS"]
+    source_addresses = local.permissive_ips
   }
 
   inbound_rule {
     protocol         = "tcp"
     port_range       = "8443"
-    source_addresses = data.sops_file.secrets.data["IPS"]
+    source_addresses = local.permissive_ips
   }
 
   inbound_rule {
     protocol         = "tcp"
     port_range       = "9090"
-    source_addresses = data.sops_file.secrets.data["IPS"]
+    source_addresses = local.permissive_ips
   }
 }

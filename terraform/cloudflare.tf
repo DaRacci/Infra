@@ -5,6 +5,12 @@ locals {
     "minix-conventions"
   ]
 
+  digitalocean_ns = [
+    "ns1",
+    "ns2",
+    "ns3"
+  ]
+
   protonmail_verification = "protonmail-verification=540667c4f6981c58787105d33fb0a156c14b9ebb"
   dkim_value              = "dyj3dpfllc7brvxpnwdjzmk2is3mfjk2merbjrwns2siher4p64ra"
   dkim_keys = [
@@ -23,6 +29,7 @@ resource "cloudflare_record" "racci-dev-caa" {
   zone_id = data.cloudflare_zone.racci-dev.id
   name    = "@"
   type    = "CAA"
+
   data {
     flags = "0"
     tag   = "issue"
@@ -30,8 +37,32 @@ resource "cloudflare_record" "racci-dev-caa" {
   }
 }
 
-#region
+#region Cloud Servers
+resource "cloudflare_record" "digitalocean_nameservers" {
+  for_each = { for key in local.digitalocean_ns : key => "${key}.digitalocean.com" }
 
+  zone_id = data.cloudflare_zone.racci-dev.id
+  name    = "@"
+  value   = each.value
+  type    = "NS"
+  proxied = false
+}
+
+resource "cloudflare_record" "nextcloud" {
+  zone_id = data.cloudflare_zone.racci-dev.id
+  name    = "nextcloud"
+  value   = "chomp.cloud.racci.dev"
+  type    = "CNAME"
+  proxied = false
+}
+
+resource "cloudflare_record" "repo" {
+  zone_id = data.cloudflare_zone.racci-dev.id
+  name    = "repo"
+  value   = "149.28.95.114"
+  type    = "A"
+  proxied = false
+}
 #endregion
 
 #region ProtonMail Records
@@ -57,14 +88,14 @@ resource "cloudflare_record" "dmarc" {
 }
 
 resource "cloudflare_record" "dkim" {
-  for_each = { for key in local.local.dkim_keys : key => {
+  for_each = { for key in local.dkim_keys : key => {
     key   = key
     value = local.dkim_value
   } }
 
   zone_id = data.cloudflare_zone.racci-dev.id
-  name    = "protonmail${each.key}._domainkey"
-  value   = "protonmail${each.key}.domainkey.${each.value}.domains.protonmail.ch"
+  name    = "protonmail${each.value.key}._domainkey"
+  value   = "protonmail${each.value.key}.domainkey.${each.value.value}.domains.protonmail.ch"
   type    = "CNAME"
   proxied = false
 }

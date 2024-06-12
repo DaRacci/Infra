@@ -27,8 +27,9 @@ provider "cloudflare" {
 }
 
 provider "proxmox" {
-  pm_api_url = "https://proxmox.racci.dev:8006/api2/json"
-  pm_user    = "racci@pam"
+  pm_api_url          = "https://pve.racci.dev/api2/json"
+  pm_api_token_id     = data.sops_file.secrets.data["PROXMOX.TOKEN_ID"]
+  pm_api_token_secret = data.sops_file.secrets.data["PROXMOX.SECRET"]
 }
 
 provider "tailscale" {

@@ -41,6 +41,7 @@
           age
           sops
           ssh-to-age
+          openssh
         ];
 
         languages = {

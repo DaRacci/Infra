@@ -1,7 +1,8 @@
 locals {
-  # For each github page, create a CNAME alias to nix-community.github.io
+  # For each github page, create a CNAME alias to daracci.github.io
   github_pages = [
     "minix",
+    "terix",
     "minix-conventions"
   ]
 
@@ -42,7 +43,7 @@ resource "cloudflare_record" "digitalocean_nameservers" {
   for_each = { for key in local.digitalocean_ns : key => "${key}.digitalocean.com" }
 
   zone_id = data.cloudflare_zone.racci-dev.id
-  name    = "@"
+  name    = "cloud"
   value   = each.value
   type    = "NS"
   proxied = false
@@ -88,14 +89,11 @@ resource "cloudflare_record" "dmarc" {
 }
 
 resource "cloudflare_record" "dkim" {
-  for_each = { for key in local.dkim_keys : key => {
-    key   = key
-    value = local.dkim_value
-  } }
+  for_each = { for key in local.dkim_keys : key => key }
 
   zone_id = data.cloudflare_zone.racci-dev.id
-  name    = "protonmail${each.value.key}._domainkey"
-  value   = "protonmail${each.value.key}.domainkey.${each.value.value}.domains.protonmail.ch"
+  name    = "${each.key}._domainkey"
+  value   = "${each.key}.domainkey.${local.dkim_value}.domains.proton.ch"
   type    = "CNAME"
   proxied = false
 }
@@ -131,5 +129,14 @@ resource "cloudflare_record" "racci-dev-github-pages" {
   value   = "daracci.github.io"
   type    = "CNAME"
   proxied = false
+}
+#endregion
+
+#region Gradle Verifications
+resource "cloudflare_record" "gradle_slimjar_verification" {
+  zone_id = data.cloudflare_zone.racci-dev.id
+  name    = "slimjar"
+  value   = "gradle-verification=H18QZ1H7PSUZJMWEVOUTYW7TAIBQJ"
+  type    = "TXT"
 }
 #endregion

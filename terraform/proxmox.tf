@@ -1,4 +1,5 @@
 locals {
+  all_containers = [proxmox_lxc.nixserv, proxmox_lxc.nixdev, proxmox_lxc.nixio]
   nixos_configurations = [
     "github:DaRacci/nix-config#nixserv",
     "github:DaRacci/nix-config#nixdev",
@@ -6,33 +7,66 @@ locals {
   ]
 }
 
-resource "terraform_data" "generate_nixos_configurations" {
+resource "terraform_data" "nixos_configurations" {
   for_each = { for c in local.nixos_configurations : split("#", c)[1] => c }
 
   triggers_replace = [
-    "proxmox_lxc.${each.key}"
+    "proxmox_lxc.${each.key}.id"
   ]
 
   provisioner "local-exec" {
-    command = join("; ", [
-      "nix build ${each.value} -o ${each.key}.tar.xz -L --impure --accept-flake-config",
-      "scp ${each.key}.tar.xz root@192.168.2.210:/var/lib/vz/template/cache/${each.key}.tar.xz",
-      "rm ${each.key}.tar.xz"
-    ])
+    command = "nix build ${each.value} -o ${each.key}.tar.xz -L --impure --accept-flake-config"
+  }
+
+  provisioner "file" {
+    source      = "${each.key}.tar.xz"
+    destination = "/var/lib/vz/template/cache/${each.key}.tar.xz"
+
+    connection {
+      type = "ssh"
+      user = "root"
+      host = "192.168.2.210"
+    }
+  }
+
+  provisioner "local-exec" {
+    command = "rm ${each.key}.tar.xz"
   }
 }
 
-resource "terraform_data" "add_ssh_key_after_creation" {
+resource "terraform_data" "init_after_creation" {
+  for_each = { for idx, val in local.all_containers : val.hostname => val }
 
+  # Adds the TUN device to the LXC containers by adding the following lines to the lxc.conf file:
+  # lxc.cgroup.devices.allow: c 10:200 rwm
+  # lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file
+  provisioner "remote-exec" {
+    inline = [
+      # Get the ID of the LXC container
+      "id=$(pct list | grep ${each.value.hostname} | awk '{print $1}')",
+      "echo 'lxc.cgroup.devices.allow: c 10:200 rwm' >> /etc/pve/lxc/$id.conf",
+      "echo 'lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file' >> /etc/pve/lxc/$id.conf",
+      "pct start $id"
+    ]
+
+    connection {
+      type = "ssh"
+      user = "root"
+      host = "192.168.2.210"
+    }
+  }
+
+  triggers_replace = [
+    each.value.id
+  ]
 }
 
 resource "proxmox_lxc" "nixserv" {
   hostname     = "nixserv"
   target_node  = "proxmox"
   ostemplate   = "local:vztmpl/nixserv.tar.xz"
-  start        = true
-  onboot       = true
   unprivileged = true
+  onboot       = true
   cmode        = "console"
 
   cores  = 4
@@ -62,16 +96,15 @@ resource "proxmox_lxc" "nixserv" {
     ip     = "dhcp"
   }
 
-  depends_on = [terraform_data.generate_nixos_configurations["nixserv"]]
+  depends_on = [terraform_data.nixos_configurations["nixserv"]]
 }
 
 resource "proxmox_lxc" "nixdev" {
   hostname     = "nixdev"
   target_node  = "proxmox"
   ostemplate   = "local:vztmpl/nixdev.tar.xz"
-  start        = true
-  onboot       = true
   unprivileged = true
+  onboot       = true
   cmode        = "console"
 
   cores  = 8
@@ -101,16 +134,15 @@ resource "proxmox_lxc" "nixdev" {
     ip6    = "auto"
   }
 
-  depends_on = [terraform_data.generate_nixos_configurations["nixdev"]]
+  depends_on = [terraform_data.nixos_configurations["nixdev"]]
 }
 
 resource "proxmox_lxc" "nixio" {
   hostname     = "nixio"
   target_node  = "proxmox"
   ostemplate   = "local:vztmpl/nixio.tar.xz"
-  start        = true
-  onboot       = true
   unprivileged = true
+  onboot       = true
   cmode        = "console"
 
   cores  = 4
@@ -139,5 +171,5 @@ resource "proxmox_lxc" "nixio" {
     ip     = "dhcp"
   }
 
-  depends_on = [terraform_data.generate_nixos_configurations["nixio"]]
+  depends_on = [terraform_data.nixos_configurations["nixio"]]
 }

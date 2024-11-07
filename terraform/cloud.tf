@@ -8,10 +8,6 @@ resource "digitalocean_firewall" "chomp_firewall" {
   droplet_ids = [data.digitalocean_droplet.chomp.id]
 
   outbound_rule {
-    protocol = "icmp"
-  }
-
-  outbound_rule {
     protocol              = "tcp"
     port_range            = "1-65535"
     destination_addresses = ["0.0.0.0/0", "::/0"]

@@ -1,21 +1,24 @@
 locals {
-  all_containers = [proxmox_lxc.nixserv, proxmox_lxc.nixdev, proxmox_lxc.nixio]
+  all_containers = [proxmox_lxc.nixserv, proxmox_lxc.nixmon, proxmox_lxc.nixdev, proxmox_lxc.nixio, proxmox_lxc.nixarr, proxmox_lxc.nixcloud]
   nixos_configurations = [
-    "github:DaRacci/nix-config#nixserv",
-    "github:DaRacci/nix-config#nixdev",
-    "github:DaRacci/nix-config#nixio"
+    "nixmon",
+    "nixarr",
+    "nixcloud",
+    "nixserv",
+    "nixdev",
+    "nixio",
   ]
 }
 
 resource "terraform_data" "nixos_configurations" {
-  for_each = { for c in local.nixos_configurations : split("#", c)[1] => c }
+  for_each = { for val in local.nixos_configurations : val => val }
 
   triggers_replace = [
     "proxmox_lxc.${each.key}.id"
   ]
 
   provisioner "local-exec" {
-    command = "nix build ${each.value} -o ${each.key}.tar.xz -L --impure --accept-flake-config"
+    command = "nix build github:DaRacci/nix-config#nixosConfigurations.${each.value}.config.formats.proxmox-lxc -o ${each.key}.tar.xz -L --impure --accept-flake-config --refresh"
   }
 
   provisioner "file" {
@@ -69,9 +72,11 @@ resource "proxmox_lxc" "nixserv" {
   onboot       = true
   cmode        = "console"
 
-  cores  = 4
-  memory = 4096
-  swap   = 2048
+  cores    = 4
+  cpulimit = 300
+  cpuunits = 80
+  memory   = 4096
+  swap     = 2048
 
   features {
     nesting = true
@@ -107,8 +112,9 @@ resource "proxmox_lxc" "nixdev" {
   onboot       = true
   cmode        = "console"
 
-  cores  = 8
-  memory = 8196
+  cores    = 8
+  cpuunits = 105
+  memory   = 8196
 
   features {
     nesting = true
@@ -145,8 +151,10 @@ resource "proxmox_lxc" "nixio" {
   onboot       = true
   cmode        = "console"
 
-  cores  = 4
-  memory = 8196
+  cores    = 6
+  cpulimit = 400
+  cpuunits = 120
+  memory   = 8196
 
   features {
     nesting = true
@@ -172,4 +180,116 @@ resource "proxmox_lxc" "nixio" {
   }
 
   depends_on = [terraform_data.nixos_configurations["nixio"]]
+}
+
+resource "proxmox_lxc" "nixarr" {
+  hostname     = "nixarr"
+  target_node  = "proxmox"
+  ostemplate   = "local:vztmpl/nixarr.tar.xz"
+  unprivileged = true
+  onboot       = true
+  cmode        = "console"
+
+  cores    = 4
+  cpulimit = 200
+  cpuunits = 90
+  memory   = 4096
+  swap     = 2048
+
+  features {
+    nesting = true
+  }
+
+  rootfs {
+    storage = "local-zfs"
+    size    = "16G"
+  }
+
+  mountpoint {
+    key     = 0
+    slot    = 0
+    storage = "jellypool"
+    mp      = "/data/media"
+    size    = "512G"
+  }
+
+  network {
+    name   = "eth0"
+    bridge = "vmbr0"
+    ip     = "dhcp"
+  }
+
+  depends_on = [terraform_data.nixos_configurations["nixarr"]]
+}
+
+resource "proxmox_lxc" "nixcloud" {
+  hostname     = "nixcloud"
+  target_node  = "proxmox"
+  ostemplate   = "local:vztmpl/nixcloud.tar.xz"
+  unprivileged = true
+  onboot       = true
+  cmode        = "console"
+
+  cores    = 8
+  cpulimit = 400
+  cpuunits = 110
+  memory   = 8196
+  swap     = 2048
+
+  features {
+    nesting = true
+  }
+
+  rootfs {
+    storage = "local-zfs"
+    size    = "16G"
+  }
+
+  mountpoint {
+    key     = 0
+    slot    = 0
+    storage = "jellypool"
+    mp      = "/data/media"
+    size    = "512G"
+  }
+
+  network {
+    name   = "eth0"
+    bridge = "vmbr0"
+    ip     = "dhcp"
+  }
+
+  depends_on = [terraform_data.nixos_configurations["nixcloud"]]
+}
+
+resource "proxmox_lxc" "nixmon" {
+  hostname     = "nixmon"
+  target_node  = "proxmox"
+  ostemplate   = "local:vztmpl/nixmon.tar.xz"
+  unprivileged = true
+  onboot       = true
+  cmode        = "console"
+
+  cores    = 2
+  cpulimit = 100
+  cpuunits = 75
+  memory   = 4098
+  swap     = 2048
+
+  features {
+    nesting = true
+  }
+
+  rootfs {
+    storage = "local-zfs"
+    size    = "16G"
+  }
+
+  network {
+    name   = "eth0"
+    bridge = "vmbr0"
+    ip     = "dhcp"
+  }
+
+  depends_on = [terraform_data.nixos_configurations["nixmon"]]
 }

@@ -18,33 +18,47 @@ resource "terraform_data" "nixos_configurations" {
   ]
 
   provisioner "local-exec" {
-    command = "nix build github:DaRacci/nix-config#nixosConfigurations.${each.value}.config.formats.proxmox-lxc -o ${each.key}.tar.xz -L --impure --accept-flake-config --refresh"
+    command = "nix build github:DaRacci/nix-config#nixosConfigurations.${each.key}.config.formats.proxmox-lxc -o /tmp/${each.key}-build -L --impure --accept-flake-config --refresh"
   }
 
   provisioner "file" {
-    source      = "${each.key}.tar.xz"
+    source      = "/tmp/${each.key}-build/nixos-system-x86_64-linux.tar.xz"
     destination = "/var/lib/vz/template/cache/${each.key}.tar.xz"
 
     connection {
       type = "ssh"
       user = "root"
-      host = "192.168.2.210"
+      host = local.proxmox_host
+    }
+  }
+
+  provisioner "remote-exec" {
+    when = destroy
+    inline = [
+      "rm -rf /var/lib/vz/template/cache/${each.key}.tar.xz"
+    ]
+
+    connection {
+      type = "ssh"
+      user = "root"
+      host = local.proxmox_host
     }
   }
 
   provisioner "local-exec" {
-    command = "rm ${each.key}.tar.xz"
+    command = "rm -rf ${each.key}-build"
   }
 }
 
 resource "terraform_data" "init_after_creation" {
   for_each = { for idx, val in local.all_containers : val.hostname => val }
 
-  # Adds the TUN device to the LXC containers by adding the following lines to the lxc.conf file:
-  # lxc.cgroup.devices.allow: c 10:200 rwm
-  # lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file
+  # Ensure the TUN device is available in the LXC containers for WireGuard/Tailscale
   provisioner "remote-exec" {
     inline = [
+      # Adds the TUN device to the LXC containers by adding the following lines to the lxc.conf file:
+      # lxc.cgroup.devices.allow: c 10:200 rwm
+      # lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file
       # Get the ID of the LXC container
       "id=$(pct list | grep ${each.value.hostname} | awk '{print $1}')",
       "echo 'lxc.cgroup.devices.allow: c 10:200 rwm' >> /etc/pve/lxc/$id.conf",
@@ -55,7 +69,28 @@ resource "terraform_data" "init_after_creation" {
     connection {
       type = "ssh"
       user = "root"
-      host = "192.168.2.210"
+      host = local.proxmox_host
+    }
+  }
+
+  # Once the Container started for the first time,
+  # we need to input its SSH Private key into the stdinput, followed by Ctrl+D to continue.
+  # This is required so we don't build the image with the SSH Private key in it.
+  provisioner "remote-exec" {
+    inline = [
+      "LXC_ID=$(pct list | grep ${each.value.hostname} | awk '{print $1}')",
+      # Ensure that the Dtach session is created before sending the SSH Private key
+      "[ -e /var/run/dtach/vzctlconsole$LXC_ID ] || dtach -n /var/run/dtach/vzctlconsole$LXC_ID lxc-console -n \"$LXC_ID\" -t 0 -e -1",
+
+      # TODO: Is there a way to get the private key from the sops file in the nix-config repo?
+      # Send the SSH Private key to the LXC container followed by Ctrl+D
+      "echo -ne \"${data.sops_ssh_keys.secrets.data["SSH_PRIVATE_KEYS.${each.value.hostname}"]}\\n\\x04\" | dtach -p \"/var/run/dtach/vzctlconsole$LXC_ID\""
+    ]
+
+    connection {
+      type = "ssh"
+      user = "root"
+      host = local.proxmox_host
     }
   }
 

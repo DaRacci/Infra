@@ -1,0 +1,42 @@
+name: Update SSH Private Keys Inside SOPS Secrets
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Run every day at midnight
+
+jobs:
+  update-secrets:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Infra Repo
+        uses: actions/checkout@v4
+        with:
+          path: 'Infra'
+
+      - name: Checkout Nix-Config Repo
+        uses: actions/checkout@v4
+        with:
+          repository: 'DaRacci/nix-config'
+          path: 'nix-config'
+          sparce-checkout: |
+            sops.yaml
+            hosts/**/secrets.yaml
+
+      - name: Update SSH Private Keys
+        run: | #bash
+          export SOPS_AGE_KEY=${{ secrets.SOPS_AGE_KEY }}
+          SOPS_CONFIG="nix-config/.sops.yaml"
+          
+          SECRETS=$(find nix-config/hosts/server -type f -name 'secrets.yaml')
+          for secret in $SECRETS; do
+            HOSTNAME=$(basename $(dirname "$secret"))
+            readarray -t SSH_PRIVATE_KEY < <(sops --config $SOPS_CONFIG -d --extract '["SSH_PRIVATE_KEY"]' $secret)
+            printf "%s\\\n" "${SSH_PRIVATE_KEY[@]}" | sops  --set "[\"SSH_PRIVATE_KEYS\"][\"$HOSTNAME\"] \"$(cat /dev/stdin)\"" Infra/terraform/host-keys.yaml
+          done
+
+      - name: Commit Changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(secrets): Update SSH Private Keys"

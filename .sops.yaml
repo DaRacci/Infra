@@ -1,7 +1,12 @@
 keys:
   - &james "age187xlhmks2tcymsnw32jzzxr6lryejma4602e3v0jlrsra5u64pdsxal44a"
+  - &workflow "age1gmc8dd4mj5q0zncy5gq4lccjlq9v84t8cqnlananmxt8g0jezv6szawll8"
 
 creation_rules:
   - path_regex: terraform/secrets.yaml$
     key_groups:
     - age: [ *james ]
+
+  - path_regex: terraform/host-keys.yaml$
+    key_groups:
+    - age: [ *james, *workflow ]

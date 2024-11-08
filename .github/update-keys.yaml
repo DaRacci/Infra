@@ -20,7 +20,7 @@ jobs:
         with:
           repository: 'DaRacci/nix-config'
           path: 'nix-config'
-          sparce-checkout: |
+          sparse-checkout: |
             sops.yaml
             hosts/**/secrets.yaml
 

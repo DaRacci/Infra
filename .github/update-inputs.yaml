@@ -1,0 +1,44 @@
+name: Update inputs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0'
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Update flake.lock
+        uses: DeterminateSystems/update-flake-lock@main
+        with:
+          commit-msg: "chore(deps): update flake.lock"
+          pr-title: "Update flake.lock"
+          pr-labels: |
+            dependencies
+            merge-queue
+            automated
+
+  build-devenv:
+    name: Build development environment
+    runs-on: ubuntu-latest
+    needs: update
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Setup Magic Cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Build Shell
+        run: nix build .#devShells.x86_64-linux.default --impure --keep-going

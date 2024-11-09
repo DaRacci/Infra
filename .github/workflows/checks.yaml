@@ -5,7 +5,7 @@ on:
     paths:
       - "flake.*"
       - "terraform/**"
-      - ".github/workflows/check.yaml"
+      - ".github/workflows/checks.yaml"
 
 jobs:
   format:

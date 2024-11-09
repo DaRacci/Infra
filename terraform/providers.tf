@@ -22,8 +22,8 @@ data "sops_file" "secrets" {
   source_file = "secrets.yaml"
 }
 
-data "sops_ssh_keys" "secrets" {
-  source_file = "hosts.yaml"
+data "sops_file" "ssh_keys" {
+  source_file = "host-keys.yaml"
 }
 
 provider "cloudflare" {

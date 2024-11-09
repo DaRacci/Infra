@@ -1,8 +1,9 @@
 name: Update SSH Private Keys Inside SOPS Secrets
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *' # Run every day at midnight
+    - cron: "0 0 * * *" # Run every day at midnight
 
 jobs:
   update-secrets:
@@ -13,22 +14,26 @@ jobs:
       - name: Checkout Infra Repo
         uses: actions/checkout@v4
         with:
-          path: 'Infra'
+          path: "Infra"
 
       - name: Checkout Nix-Config Repo
         uses: actions/checkout@v4
         with:
-          repository: 'DaRacci/nix-config'
-          path: 'nix-config'
+          repository: "DaRacci/nix-config"
+          path: "nix-config"
           sparse-checkout: |
             sops.yaml
             hosts/**/secrets.yaml
 
+      - name: Sops Binary Installer
+        uses: mdgreenwald/mozilla-sops-action@v1.6.0
+        id: install
+
       - name: Update SSH Private Keys
         run: | #bash
-          export SOPS_AGE_KEY=${{ secrets.SOPS_AGE_KEY }}
+          export SOPS_AGE_KEY=${{ secrets.SSH_AGE_KEY }}
           SOPS_CONFIG="nix-config/.sops.yaml"
-          
+
           SECRETS=$(find nix-config/hosts/server -type f -name 'secrets.yaml')
           for secret in $SECRETS; do
             HOSTNAME=$(basename $(dirname "$secret"))

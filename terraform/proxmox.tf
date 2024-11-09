@@ -32,19 +32,6 @@ resource "terraform_data" "nixos_configurations" {
     }
   }
 
-  provisioner "remote-exec" {
-    when = destroy
-    inline = [
-      "rm -rf /var/lib/vz/template/cache/${each.key}.tar.xz"
-    ]
-
-    connection {
-      type = "ssh"
-      user = "root"
-      host = local.proxmox_host
-    }
-  }
-
   provisioner "local-exec" {
     command = "rm -rf ${each.key}-build"
   }

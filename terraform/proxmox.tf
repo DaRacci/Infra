@@ -71,7 +71,8 @@ resource "terraform_data" "init_after_creation" {
 
       # TODO: Is there a way to get the private key from the sops file in the nix-config repo?
       # Send the SSH Private key to the LXC container followed by Ctrl+D
-      "echo -ne \"${data.sops_file.ssh_keys.data["SSH_PRIVATE_KEYS.${each.value.hostname}"]}\\n\\x04\" | dtach -p \"/var/run/dtach/vzctlconsole$LXC_ID\""
+      # Use the full path so we don't use the bash built-in echo
+      "/usr/bin/echo -ne \"${data.sops_file.ssh_keys.data["SSH_PRIVATE_KEYS.${each.value.hostname}"]}\\n\\x04\" | dtach -p \"/var/run/dtach/vzctlconsole$LXC_ID\""
     ]
 
     connection {

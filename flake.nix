@@ -16,16 +16,20 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable-small";
     flake-parts.url = "github:hercules-ci/flake-parts";
     devenv.url = "github:cachix/devenv";
+    treefmt-nix.url = "github:numtide/treefmt-nix";
+    flake-root.url = "github:srid/flake-root";
   };
 
-  outputs = inputs@{ self, flake-parts, ... }: flake-parts.lib.mkFlake { inherit inputs; } {
+  outputs = inputs @ { flake-parts, ... }: flake-parts.lib.mkFlake { inherit inputs; } {
     imports = [
       inputs.devenv.flakeModule
+      inputs.treefmt-nix.flakeModule
+      inputs.flake-root.flakeModule
     ];
 
     systems = [ "x86_64-linux" "aarch64-linux" ];
 
-    perSystem = { system, pkgs, ... }: {
+    perSystem = { config, system, pkgs, ... }: {
       _module.args.pkgs = import inputs.nixpkgs {
         inherit system;
         config = {
@@ -57,6 +61,32 @@
             ]);
           };
         };
+
+        pre-commit.hooks = {
+          deadnix.enable = true;
+          statix.enable = true;
+          ripsecrets.enable = true;
+          typos.enable = true;
+          treefmt = {
+            enable = true;
+            package = config.treefmt.build.wrapper;
+          };
+        };
+      };
+
+      treefmt.config = {
+        inherit (config.flake-root) projectRootFile;
+
+        programs.terraform = {
+          enable = true;
+          inherit (config.devenv.shells.default.languages.terraform) package;
+        };
+        programs.prettier.enable = true;
+
+        settings.global.excludes = [
+          "./terraform/secrets.yaml"
+          "./terraform/host-keys.yaml"
+        ];
       };
     };
   };

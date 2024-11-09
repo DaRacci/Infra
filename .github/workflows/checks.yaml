@@ -1,0 +1,48 @@
+name: Formatting & Validation
+
+on:
+  push:
+    paths:
+      - "flake.*"
+      - "terraform/**"
+      - ".github/workflows/check.yaml"
+
+jobs:
+  format:
+    name: Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup magic cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Run Format
+        run: nix develop --command "treefmt --fail-on-change | statix check | deadnix --fail"
+
+  validate:
+    name: Terraform Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup magic cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Run Validate
+        working-directory: terraform
+        run: nix develop --command "terraform validate"

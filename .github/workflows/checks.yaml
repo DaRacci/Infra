@@ -25,7 +25,7 @@ jobs:
         uses: DeterminateSystems/magic-nix-cache-action@main
 
       - name: Run Format
-        run: nix develop --command "treefmt --fail-on-change | statix check | deadnix --fail"
+        run: nix develop --impure --command "treefmt --fail-on-change | statix check | deadnix --fail"
 
   validate:
     name: Terraform Validation
@@ -45,4 +45,4 @@ jobs:
 
       - name: Run Validate
         working-directory: terraform
-        run: nix develop --command "terraform validate"
+        run: nix develop --impure --command "terraform validate"

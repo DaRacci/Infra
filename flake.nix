@@ -40,7 +40,6 @@
       devenv.shells.default = {
         packages = with pkgs; [
           cocogitto
-          nix
           git
           age
           sops

@@ -22,8 +22,8 @@ jobs:
           repository: "DaRacci/nix-config"
           path: "nix-config"
           sparse-checkout: |
-            sops.yaml
-            hosts/**/secrets.yaml
+            .sops.yaml
+            hosts/
 
       - name: Sops Binary Installer
         uses: mdgreenwald/mozilla-sops-action@v1.6.0

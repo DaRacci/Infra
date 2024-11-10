@@ -40,7 +40,7 @@ jobs:
             readarray -t SSH_PRIVATE_KEY < <(sops --config $SOPS_CONFIG -d --extract '["SSH_PRIVATE_KEY"]' $secret)
 
             # Compare to the existing key and update only if different
-            readarray -t EXISTING_KEY < <(sops --config .sops.yaml -d --extract "[\"SSH_PRIVATE_KEYS\"][\"$HOSTNAME\"]" terraform/host-keys.yaml)
+            readarray -t EXISTING_KEY < <(sops --config Infra/.sops.yaml -d --extract "[\"SSH_PRIVATE_KEYS\"][\"$HOSTNAME\"]" Infra/terraform/host-keys.yaml)
             echo "Existing key: ${EXISTING_KEY[*]}"
             echo "New key: ${SSH_PRIVATE_KEY[*]}"
 

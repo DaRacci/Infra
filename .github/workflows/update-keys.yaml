@@ -41,9 +41,6 @@ jobs:
 
             # Compare to the existing key and update only if different
             readarray -t EXISTING_KEY < <(sops --config Infra/.sops.yaml -d --extract "[\"SSH_PRIVATE_KEYS\"][\"$HOSTNAME\"]" Infra/terraform/host-keys.yaml)
-            echo "Existing key: ${EXISTING_KEY[*]}"
-            echo "New key: ${SSH_PRIVATE_KEY[*]}"
-
             if [[ "${EXISTING_KEY[*]}" == "${SSH_PRIVATE_KEY[*]}" ]]; then
               echo "No changes for $HOSTNAME"
               continue

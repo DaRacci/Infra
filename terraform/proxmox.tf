@@ -95,11 +95,9 @@ resource "proxmox_lxc" "nixserv" {
   onboot       = true
   cmode        = "console"
 
-  cores    = 4
-  cpulimit = 300
   cpuunits = 80
-  memory   = 4096
-  swap     = 2048
+  memory   = 8192
+  swap     = 4096
 
   features {
     nesting = true

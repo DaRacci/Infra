@@ -42,7 +42,7 @@ resource "tailscale_dns_preferences" "preferences" {
 }
 
 resource "tailscale_dns_search_paths" "search_domains" {
-  search_paths = ["localadmin"]
+  search_paths = ["localdomain"]
 }
 
 resource "tailscale_acl" "as_hujson" {

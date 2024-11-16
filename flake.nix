@@ -65,7 +65,12 @@
           deadnix.enable = true;
           statix.enable = true;
           ripsecrets.enable = true;
-          typos.enable = true;
+          typos = {
+            enable = true;
+            settings.ignored-words = [
+              "blong"
+            ];
+          };
           treefmt = {
             enable = true;
             package = config.treefmt.build.wrapper;

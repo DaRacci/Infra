@@ -29,7 +29,7 @@
 
     systems = [ "x86_64-linux" "aarch64-linux" ];
 
-    perSystem = { config, system, pkgs, ... }: {
+    perSystem = { config, system, pkgs, lib, ... }: {
       _module.args.pkgs = import inputs.nixpkgs {
         inherit system;
         config = {
@@ -38,6 +38,9 @@
       };
 
       devenv.shells.default = {
+        # Fixes https://github.com/cachix/devenv/issues/528
+        containers = lib.mkForce { };
+
         packages = with pkgs; [
           cocogitto
           git

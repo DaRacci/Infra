@@ -1,5 +1,5 @@
 locals {
-  all_containers = [proxmox_lxc.nixserv, proxmox_lxc.nixmon, proxmox_lxc.nixdev, proxmox_lxc.nixio, proxmox_lxc.nixarr, proxmox_lxc.nixcloud]
+  all_containers = [proxmox_lxc.nixserv, proxmox_lxc.nixmon, proxmox_lxc.nixdev, proxmox_lxc.nixio, proxmox_lxc.nixarr, proxmox_lxc.nixcloud, proxmox_lxc.nixai]
   nixos_configurations = [
     "nixmon",
     "nixarr",
@@ -7,6 +7,7 @@ locals {
     "nixserv",
     "nixdev",
     "nixio",
+    "nixai"
   ]
 }
 
@@ -266,14 +267,6 @@ resource "proxmox_lxc" "nixcloud" {
     size    = "16G"
   }
 
-  mountpoint {
-    key     = 0
-    slot    = 0
-    storage = "jellypool"
-    mp      = "/data/media"
-    size    = "512G"
-  }
-
   network {
     name   = "eth0"
     bridge = "vmbr0"
@@ -313,4 +306,36 @@ resource "proxmox_lxc" "nixmon" {
   }
 
   depends_on = [terraform_data.nixos_configurations["nixmon"]]
+}
+
+resource "proxmox_lxc" "nixai" {
+  hostname     = "nixai"
+  target_node  = "proxmox"
+  ostemplate   = "local:vztmpl/nixai.tar.xz"
+  unprivileged = true
+  onboot       = true
+  cmode        = "console"
+
+  cores    = 2
+  cpulimit = 100
+  cpuunits = 75
+  memory   = 4098
+  swap     = 2048
+
+  features {
+    nesting = true
+  }
+
+  rootfs {
+    storage = "local-zfs"
+    size    = "32G"
+  }
+
+  network {
+    name   = "eth0"
+    bridge = "vmbr0"
+    ip     = "dhcp"
+  }
+
+  depends_on = [terraform_data.nixos_configurations["nixai"]]
 }

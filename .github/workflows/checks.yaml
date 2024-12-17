@@ -46,4 +46,4 @@ jobs:
 
       - name: Run Validate
         working-directory: terraform
-        run: nix develop --impure --command "terraform validate"
+        run: nix develop --impure --command terraform validate

@@ -2,8 +2,8 @@ data "tailscale_device" "bling-bling-blong" {
   name = "bling-bling-blong.degu-beta.ts.net"
 }
 
-data "tailscale_device" "adguard" {
-  name = "adguard.degu-beta.ts.net"
+data "tailscale_device" "nixio" {
+  name = "nixio.degu-beta.ts.net"
 }
 
 resource "tailscale_device_subnet_routes" "bling-bling-blong_routes" {
@@ -21,8 +21,8 @@ resource "tailscale_device_subnet_routes" "bling-bling-blong_routes" {
   ]
 }
 
-resource "tailscale_device_subnet_routes" "adguard_routes" {
-  device_id = data.tailscale_device.adguard.id
+resource "tailscale_device_subnet_routes" "nixio_routes" {
+  device_id = data.tailscale_device.nixio.id
   routes = [
     # Allow Use as Exit Node
     "0.0.0.0/0",
@@ -33,8 +33,8 @@ resource "tailscale_device_subnet_routes" "adguard_routes" {
   ]
 }
 
-resource "tailscale_dns_nameservers" "adguard_dns" {
-  nameservers = data.tailscale_device.adguard.addresses
+resource "tailscale_dns_nameservers" "nixio_dns" {
+  nameservers = data.tailscale_device.nixio.addresses
 }
 
 resource "tailscale_dns_preferences" "preferences" {

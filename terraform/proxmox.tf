@@ -18,23 +18,15 @@ resource "terraform_data" "nixos_configurations" {
     "proxmox_lxc.${each.key}.id"
   ]
 
+  # TODO - Join these commands into a single command
   provisioner "local-exec" {
     command = "nix build github:DaRacci/nix-config#nixosConfigurations.${each.key}.config.formats.proxmox-lxc -o /tmp/${each.key}-build -L --impure --accept-flake-config --refresh"
   }
-
-  provisioner "file" {
-    source      = "/tmp/${each.key}-build/nixos-system-x86_64-linux.tar.xz"
-    destination = "/var/lib/vz/template/cache/${each.key}.tar.xz"
-
-    connection {
-      type = "ssh"
-      user = "root"
-      host = local.proxmox_host
-    }
-  }
-
   provisioner "local-exec" {
-    command = "rm -rf ${each.key}-build"
+    command = "scp /tmp/${each.key}-build/nixos-image-lxc-proxmox-* root@${local.proxmox_host}:/var/lib/vz/template/cache/${each.key}.tar.xz"
+  }
+  provisioner "local-exec" {
+    command = "rm -rf /tmp/${each.key}-build"
   }
 }
 

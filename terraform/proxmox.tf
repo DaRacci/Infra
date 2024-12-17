@@ -228,14 +228,6 @@ resource "proxmox_lxc" "nixarr" {
     size    = "16G"
   }
 
-  mountpoint {
-    key     = 0
-    slot    = 0
-    storage = "jellypool"
-    mp      = "/data/media"
-    size    = "512G"
-  }
-
   network {
     name   = "eth0"
     bridge = "vmbr0"

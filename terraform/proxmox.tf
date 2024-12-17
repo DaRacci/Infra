@@ -33,39 +33,31 @@ resource "terraform_data" "nixos_configurations" {
 resource "terraform_data" "init_after_creation" {
   for_each = { for idx, val in local.all_containers : val.hostname => val }
 
-  # Ensure the TUN device is available in the LXC containers for WireGuard/Tailscale
-  provisioner "remote-exec" {
-    inline = [
-      # Adds the TUN device to the LXC containers by adding the following lines to the lxc.conf file:
-      # lxc.cgroup.devices.allow: c 10:200 rwm
-      # lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file
-      # Get the ID of the LXC container
-      "id=$(pct list | grep ${each.value.hostname} | awk '{print $1}')",
-      "echo 'lxc.cgroup.devices.allow: c 10:200 rwm' >> /etc/pve/lxc/$id.conf",
-      "echo 'lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file' >> /etc/pve/lxc/$id.conf",
-      "pct start $id"
-    ]
-
-    connection {
-      type = "ssh"
-      user = "root"
-      host = local.proxmox_host
-    }
-  }
-
-  # Once the Container started for the first time,
-  # we need to input its SSH Private key into the stdinput, followed by Ctrl+D to continue.
-  # This is required so we don't build the image with the SSH Private key in it.
   provisioner "remote-exec" {
     inline = [
       "LXC_ID=$(pct list | grep ${each.value.hostname} | awk '{print $1}')",
+      "LXC_CONF=/etc/pve/lxc/$LXC_ID.conf",
+
+      #region Ensure the TUN device is available in the LXC containers for WireGuard/Tailscale
+      "VALUE='lxc.cgroup.devices.allow: c 10:200 rwm' && grep -qxF -- \"$VALUE\" $LXC_CONF || echo \"$VALUE\" >> $LXC_CONF",
+      "VALUE='lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file' && grep -qxF -- \"$VALUE\" $LXC_CONF || echo \"$VALUE\" >> $LXC_CONF",
+      #endregion
+
+      "pct start $LXC_ID",
+      "while [ $(pct status $LXC_ID | grep running | wc -l) -eq 0 ]; do sleep 1; done",
+
+      #region Input the SSH Private key into the LXC container
+      # Once the Container started for the first time,
+      # we need to input its SSH Private key into the stdinput, followed by Ctrl+D to continue.
+      # This is required so we don't build the image with the SSH Private key in it.
+
       # Ensure that the Dtach session is created before sending the SSH Private key
       "[ -e /var/run/dtach/vzctlconsole$LXC_ID ] || dtach -n /var/run/dtach/vzctlconsole$LXC_ID lxc-console -n \"$LXC_ID\" -t 0 -e -1",
 
-      # TODO: Is there a way to get the private key from the sops file in the nix-config repo?
       # Send the SSH Private key to the LXC container followed by Ctrl+D
       # Use the full path so we don't use the bash built-in echo
       "/usr/bin/echo -ne \"${data.sops_file.ssh_keys.data["SSH_PRIVATE_KEYS.${each.value.hostname}"]}\\n\\x04\" | dtach -p \"/var/run/dtach/vzctlconsole$LXC_ID\""
+      #endregion
     ]
 
     connection {

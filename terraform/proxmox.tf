@@ -56,7 +56,11 @@ resource "terraform_data" "init_after_creation" {
 
       # Send the SSH Private key to the LXC container followed by Ctrl+D
       # Use the full path so we don't use the bash built-in echo
-      "/usr/bin/echo -ne \"${data.sops_file.ssh_keys.data["SSH_PRIVATE_KEYS.${each.value.hostname}"]}\\n\\x04\" | dtach -p \"/var/run/dtach/vzctlconsole$LXC_ID\""
+      "/usr/bin/echo -ne \"${data.sops_file.ssh_keys.data["SSH_PRIVATE_KEYS.${each.value.hostname}"]}\\n\\x04\" | dtach -p \"/var/run/dtach/vzctlconsole$LXC_ID\"",
+      #endregion
+
+      #region Do a rebuild to ensure proper configuration
+      "nixos-rebuild switch --flake github:DaRacci/nix-config#${each.key} --impure --accept-flake-config"
       #endregion
     ]
 

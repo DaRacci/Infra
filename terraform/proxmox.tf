@@ -245,7 +245,7 @@ resource "proxmox_lxc" "nixcloud" {
 
   rootfs {
     storage = "local-zfs"
-    size    = "16G"
+    size    = "32G"
   }
 
   network {

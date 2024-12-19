@@ -44,7 +44,7 @@ resource "cloudflare_record" "digitalocean_nameservers" {
 
   zone_id = data.cloudflare_zone.racci-dev.id
   name    = "cloud"
-  value   = each.value
+  content = each.value
   type    = "NS"
   proxied = false
 }
@@ -52,7 +52,7 @@ resource "cloudflare_record" "digitalocean_nameservers" {
 resource "cloudflare_record" "nextcloud" {
   zone_id = data.cloudflare_zone.racci-dev.id
   name    = "nextcloud"
-  value   = "chomp.cloud.racci.dev"
+  content = "chomp.cloud.racci.dev"
   type    = "CNAME"
   proxied = false
 }
@@ -60,7 +60,7 @@ resource "cloudflare_record" "nextcloud" {
 resource "cloudflare_record" "repo" {
   zone_id = data.cloudflare_zone.racci-dev.id
   name    = "repo"
-  value   = "149.28.95.114"
+  content = "149.28.95.114"
   type    = "A"
   proxied = false
 }
@@ -70,21 +70,21 @@ resource "cloudflare_record" "repo" {
 resource "cloudflare_record" "verification" {
   zone_id = data.cloudflare_zone.racci-dev.id
   name    = "@"
-  value   = local.protonmail_verification
+  content = local.protonmail_verification
   type    = "TXT"
 }
 
 resource "cloudflare_record" "spf" {
   zone_id = data.cloudflare_zone.racci-dev.id
   name    = "@"
-  value   = "v=spf1 include:_spf.protonmail.ch mx -all"
+  content = "v=spf1 include:_spf.protonmail.ch mx -all"
   type    = "TXT"
 }
 
 resource "cloudflare_record" "dmarc" {
   zone_id = data.cloudflare_zone.racci-dev.id
   name    = "_dmarc"
-  value   = "v=DMARC1; p=reject; rua=mailto:${local.admin};"
+  content = "v=DMARC1; p=reject; rua=mailto:${local.admin};"
   type    = "TXT"
 }
 
@@ -93,7 +93,7 @@ resource "cloudflare_record" "dkim" {
 
   zone_id = data.cloudflare_zone.racci-dev.id
   name    = "${each.key}._domainkey"
-  value   = "${each.key}.domainkey.${local.dkim_value}.domains.proton.ch"
+  content = "${each.key}.domainkey.${local.dkim_value}.domains.proton.ch"
   type    = "CNAME"
   proxied = false
 }
@@ -106,7 +106,7 @@ resource "cloudflare_record" "MX" {
 
   zone_id  = data.cloudflare_zone.racci-dev.id
   name     = "@"
-  value    = each.key
+  content  = each.key
   type     = "MX"
   priority = each.value
   proxied  = false
@@ -117,7 +117,7 @@ resource "cloudflare_record" "MX" {
 resource "cloudflare_record" "racci-dev-github-pages-challenge-TXT" {
   zone_id = data.cloudflare_zone.racci-dev.id
   name    = "_github-pages-challenge-daracci"
-  value   = "019f67c7bb1464952df9634b97f6fe"
+  content = "019f67c7bb1464952df9634b97f6fe"
   type    = "TXT"
 }
 
@@ -126,7 +126,7 @@ resource "cloudflare_record" "racci-dev-github-pages" {
 
   zone_id = data.cloudflare_zone.racci-dev.id
   name    = each.value
-  value   = "daracci.github.io"
+  content = "daracci.github.io"
   type    = "CNAME"
   proxied = false
 }
@@ -136,7 +136,7 @@ resource "cloudflare_record" "racci-dev-github-pages" {
 resource "cloudflare_record" "gradle_slimjar_verification" {
   zone_id = data.cloudflare_zone.racci-dev.id
   name    = "slimjar"
-  value   = "gradle-verification=H18QZ1H7PSUZJMWEVOUTYW7TAIBQJ"
+  content = "gradle-verification=H18QZ1H7PSUZJMWEVOUTYW7TAIBQJ"
   type    = "TXT"
 }
 #endregion

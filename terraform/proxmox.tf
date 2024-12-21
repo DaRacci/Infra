@@ -32,16 +32,17 @@ resource "terraform_data" "init_after_creation" {
 
   provisioner "remote-exec" {
     inline = [
-      "LXC_ID=$(pct list | grep ${each.value.hostname} | awk '{print $1}')",
-      "LXC_CONF=/etc/pve/lxc/$LXC_ID.conf",
+      "LXC_ID=$(pct list | grep \"${each.value.hostname}\" | awk '{print $1}')",
+      "[ -z \"$LXC_ID\" ] && echo \"Container not found\" && exit 1",
+      "LXC_CONF=/etc/pve/lxc/\"$LXC_ID\".conf",
 
       #region Ensure the TUN device is available in the LXC containers for WireGuard/Tailscale
-      "VALUE='lxc.cgroup.devices.allow: c 10:200 rwm' && grep -qxF -- \"$VALUE\" $LXC_CONF || echo \"$VALUE\" >> $LXC_CONF",
-      "VALUE='lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file' && grep -qxF -- \"$VALUE\" $LXC_CONF || echo \"$VALUE\" >> $LXC_CONF",
+      "VALUE='lxc.cgroup.devices.allow: c 10:200 rwm' && grep -qxF -- \"$VALUE\" \"$LXC_CONF\" || echo \"$VALUE\" >> \"$LXC_CONF\"",
+      "VALUE='lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file' && grep -qxF -- \"$VALUE\" \"$LXC_CONF\" || echo \"$VALUE\" >> \"$LXC_CONF\"",
       #endregion
 
-      "pct start $LXC_ID",
-      "while [ $(pct status $LXC_ID | grep running | wc -l) -eq 0 ]; do sleep 1; done",
+      "pct start \"$LXC_ID\"",
+      "while [ $(pct status \"$LXC_ID\" | grep \"running\" | wc -l) -eq 0 ]; do sleep 1; done",
 
       #region Input the SSH Private key into the LXC container
       # Once the Container started for the first time,
@@ -49,15 +50,16 @@ resource "terraform_data" "init_after_creation" {
       # This is required so we don't build the image with the SSH Private key in it.
 
       # Ensure that the Dtach session is created before sending the SSH Private key
-      "[ -e /var/run/dtach/vzctlconsole$LXC_ID ] || dtach -n /var/run/dtach/vzctlconsole$LXC_ID lxc-console -n \"$LXC_ID\" -t 0 -e -1",
+      "CONSOLE_FILE=/var/run/dtach/vzctlconsole\"$LXC_ID\"",
+      "[ -e \"$CONSOLE_FILE\" ] || dtach -n \"$CONSOLE_FILE\" lxc-console -n \"$LXC_ID\" -t 0 -e -1",
 
       # Send the SSH Private key to the LXC container followed by Ctrl+D
       # Use the full path so we don't use the bash built-in echo
-      "/usr/bin/echo -ne \"${data.sops_file.ssh_keys.data["SSH_PRIVATE_KEYS.${each.value.hostname}"]}\\n\\x04\" | dtach -p \"/var/run/dtach/vzctlconsole$LXC_ID\"",
+      "/usr/bin/echo -ne \"${data.sops_file.ssh_keys.data["SSH_PRIVATE_KEYS.${each.value.hostname}"]}\\n\\x04\" | dtach -p \"$CONSOLE_FILE\"",
       #endregion
 
       #region Do a rebuild to ensure proper configuration
-      "nixos-rebuild switch --flake github:DaRacci/nix-config#${each.key} --impure --accept-flake-config"
+      "/usr/bin/echo -ne \"nixos-rebuild switch --flake github:DaRacci/nix-config#${each.key} --impure --accept-flake-config\" | dtach -p \"$CONSOLE_FILE\""
       #endregion
     ]
 

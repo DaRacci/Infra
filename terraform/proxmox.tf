@@ -11,12 +11,9 @@ locals {
   ]
 }
 
+# TODO - Automatically create new up to date images upon a new commit to the nix-config repository
 resource "terraform_data" "nixos_configurations" {
   for_each = { for val in local.nixos_configurations : val => val }
-
-  triggers_replace = [
-    "proxmox_lxc.${each.key}.id"
-  ]
 
   # TODO - Join these commands into a single command
   provisioner "local-exec" {

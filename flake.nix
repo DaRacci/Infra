@@ -84,15 +84,21 @@
       treefmt.config = {
         inherit (config.flake-root) projectRootFile;
 
-        programs.terraform = {
-          enable = true;
-          inherit (config.devenv.shells.default.languages.terraform) package;
+        programs = {
+          terraform = {
+            enable = true;
+            inherit (config.devenv.shells.default.languages.terraform) package;
+          };
+          statix.enable = true;
+          prettier.enable = true;
+          shellcheck.enable = true;
         };
-        programs.prettier.enable = true;
 
         settings.global.excludes = [
-          "./terraform/secrets.yaml"
-          "./terraform/host-keys.yaml"
+          ".envrc"
+          "terraform/secrets.yaml"
+          "terraform/host-keys.yaml"
+          "terraform/.terraform.lock.hcl"
         ];
       };
     };

@@ -94,7 +94,7 @@ resource "proxmox_lxc" "nixserv" {
 
   rootfs {
     storage = "local-zfs"
-    size    = "8G"
+    size    = "16G"
   }
 
   mountpoint {
@@ -132,7 +132,7 @@ resource "proxmox_lxc" "nixdev" {
 
   rootfs {
     storage = "local-zfs"
-    size    = "8G"
+    size    = "16G"
   }
 
   mountpoint {
@@ -172,7 +172,7 @@ resource "proxmox_lxc" "nixio" {
 
   rootfs {
     storage = "local-zfs"
-    size    = "8G"
+    size    = "16G"
   }
 
   mountpoint {

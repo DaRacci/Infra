@@ -240,6 +240,7 @@ resource "proxmox_lxc" "nixcloud" {
 
   features {
     nesting = true
+    fuse    = true
   }
 
   rootfs {

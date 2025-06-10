@@ -50,7 +50,7 @@ jobs:
           done
 
       - name: Commit Changes
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v6
         with:
           repository: "Infra"
           commit_message: "chore(secrets): Update SSH Private Keys"

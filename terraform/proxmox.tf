@@ -1,5 +1,5 @@
 locals {
-  all_containers = [proxmox_lxc.nixserv, proxmox_lxc.nixmon, proxmox_lxc.nixdev, proxmox_lxc.nixio, proxmox_lxc.nixarr, proxmox_lxc.nixcloud, proxmox_lxc.nixai]
+  all_containers = [for k, v in proxmox_lxc.containers : v]
   nixos_configurations = [
     "nixmon",
     "nixarr",
@@ -9,21 +9,97 @@ locals {
     "nixio",
     "nixai"
   ]
+
+  # Default values for containers
+  container_defaults = {
+    rootfs_size = "16G"
+    memory      = 2048
+    swap        = null
+    features = {
+      nesting = true
+      fuse    = false
+    }
+  }
+
+  container_configs = {
+    nixserv = {
+      cores    = 8
+      cpuunits = 80
+      memory   = 8192
+      swap     = 4096
+      mountpoint = {
+        key     = 0
+        slot    = 0
+        storage = "local-zfs"
+        mp      = "/nix/store"
+        size    = "128G"
+      }
+    }
+    nixdev = {
+      cores    = 8
+      cpuunits = 105
+      memory   = 16384
+      mountpoint = {
+        key     = 0
+        slot    = 0
+        storage = "local-zfs"
+        mp      = "/var/lib/coder"
+        size    = "128G"
+      }
+    }
+    nixio = {
+      cores    = 6
+      cpuunits = 120
+      memory   = 4096
+      mountpoint = {
+        key     = 0
+        slot    = 0
+        storage = "local-zfs"
+        mp      = "/var/lib/minio/data"
+        size    = "512G"
+      }
+    }
+    nixarr = {
+      cores    = 4
+      cpuunits = 90
+      memory   = 4096
+      mountpoint = {
+        key     = 0
+        slot    = 0
+        storage = "naspool"
+        mp      = "/data/media"
+        size    = "2056G"
+        backup  = false
+      }
+    }
+    nixcloud = {
+      cores       = 8
+      cpuunits    = 110
+      memory      = 8196
+      rootfs_size = "32G"
+      features = {
+        fuse = true
+      }
+    }
+    nixmon = {
+      cores    = 2
+      cpuunits = 75
+      memory   = 1024
+    }
+    nixai = {
+      cores       = 16
+      cpuunits    = 75
+      memory      = 16384
+      rootfs_size = "96G"
+    }
+  }
 }
 
 # TODO - Automatically create new up to date images upon a new commit to the nix-config repository
 resource "terraform_data" "nixos_configurations" {
   for_each = { for val in local.nixos_configurations : val => val }
-
-  # TODO - Join these commands into a single command
   provisioner "local-exec" {
-    command = "nix build github:DaRacci/nix-config#nixosConfigurations.${each.key}.config.formats.proxmox-lxc -o /tmp/${each.key}-build -L --impure --accept-flake-config --refresh"
-  }
-  provisioner "local-exec" {
-    command = "scp /tmp/${each.key}-build/nixos-image-lxc-proxmox-* root@${local.proxmox_host}:/var/lib/vz/template/cache/${each.key}.tar.xz"
-  }
-  provisioner "local-exec" {
-    command = "rm -rf /tmp/${each.key}-build"
+    command = "./scripts/build-image-and-transfer.nu ${each.key}"
   }
 }
 
@@ -75,248 +151,49 @@ resource "terraform_data" "init_after_creation" {
   ]
 }
 
-resource "proxmox_lxc" "nixserv" {
-  hostname     = "nixserv"
+resource "proxmox_lxc" "containers" {
+  for_each = local.container_configs
+
+  hostname     = each.key
   target_node  = "proxmox"
-  ostemplate   = "local:vztmpl/nixserv.tar.xz"
+  ostemplate   = "local:vztmpl/${each.key}.tar.xz"
   unprivileged = true
   onboot       = true
   cmode        = "console"
 
-  cores    = 8
-  cpuunits = 80
-  memory   = 8192
-  swap     = 4096
+  cores    = each.value.cores
+  cpulimit = try(each.value.cpulimit, null)
+  cpuunits = each.value.cpuunits
+  memory   = lookup(each.value, "memory", local.container_defaults.memory)
 
   features {
-    nesting = true
+    nesting = lookup(lookup(each.value, "features", {}), "nesting", local.container_defaults.features.nesting)
+    fuse    = lookup(lookup(each.value, "features", {}), "fuse", local.container_defaults.features.fuse)
   }
 
   rootfs {
     storage = "local-zfs"
-    size    = "16G"
+    size    = lookup(each.value, "rootfs_size", local.container_defaults.rootfs_size)
   }
 
-  mountpoint {
-    key     = 0
-    slot    = 0
-    storage = "local-zfs"
-    mp      = "/nix/store"
-    size    = "128G"
+  dynamic "mountpoint" {
+    for_each = try(each.value.mountpoint, null) != null ? [each.value.mountpoint] : []
+    content {
+      key     = mountpoint.value.key
+      slot    = mountpoint.value.slot
+      storage = mountpoint.value.storage
+      mp      = mountpoint.value.mp
+      size    = mountpoint.value.size
+      backup  = try(mountpoint.value.backup, null)
+    }
   }
 
   network {
     name   = "eth0"
     bridge = "vmbr0"
     ip     = "dhcp"
+    ip6    = "dhcp"
   }
 
-  depends_on = [terraform_data.nixos_configurations["nixserv"]]
-}
-
-resource "proxmox_lxc" "nixdev" {
-  hostname     = "nixdev"
-  target_node  = "proxmox"
-  ostemplate   = "local:vztmpl/nixdev.tar.xz"
-  unprivileged = true
-  onboot       = true
-  cmode        = "console"
-
-  cores    = 8
-  cpuunits = 105
-  memory   = 8196
-
-  features {
-    nesting = true
-  }
-
-  rootfs {
-    storage = "local-zfs"
-    size    = "16G"
-  }
-
-  mountpoint {
-    key     = 0
-    slot    = 0
-    storage = "local-zfs"
-    mp      = "/var/lib/coder"
-    size    = "128G"
-  }
-
-  network {
-    name   = "eth0"
-    bridge = "vmbr0"
-    ip     = "dhcp"
-    ip6    = "auto"
-  }
-
-  depends_on = [terraform_data.nixos_configurations["nixdev"]]
-}
-
-resource "proxmox_lxc" "nixio" {
-  hostname     = "nixio"
-  target_node  = "proxmox"
-  ostemplate   = "local:vztmpl/nixio.tar.xz"
-  unprivileged = true
-  onboot       = true
-  cmode        = "console"
-
-  cores    = 6
-  cpulimit = 400
-  cpuunits = 120
-  memory   = 8196
-
-  features {
-    nesting = true
-  }
-
-  rootfs {
-    storage = "local-zfs"
-    size    = "16G"
-  }
-
-  mountpoint {
-    key     = 0
-    slot    = 0
-    storage = "local-zfs"
-    mp      = "/var/lib/minio/data"
-    size    = "256G"
-  }
-
-  network {
-    name   = "eth0"
-    bridge = "vmbr0"
-    ip     = "dhcp"
-  }
-
-  depends_on = [terraform_data.nixos_configurations["nixio"]]
-}
-
-resource "proxmox_lxc" "nixarr" {
-  hostname     = "nixarr"
-  target_node  = "proxmox"
-  ostemplate   = "local:vztmpl/nixarr.tar.xz"
-  unprivileged = true
-  onboot       = true
-  cmode        = "console"
-
-  cores    = 4
-  cpulimit = 200
-  cpuunits = 90
-  memory   = 4096
-  swap     = 2048
-
-  features {
-    nesting = true
-  }
-
-  rootfs {
-    storage = "local-zfs"
-    size    = "16G"
-  }
-
-  network {
-    name   = "eth0"
-    bridge = "vmbr0"
-    ip     = "dhcp"
-  }
-
-  depends_on = [terraform_data.nixos_configurations["nixarr"]]
-}
-
-resource "proxmox_lxc" "nixcloud" {
-  hostname     = "nixcloud"
-  target_node  = "proxmox"
-  ostemplate   = "local:vztmpl/nixcloud.tar.xz"
-  unprivileged = true
-  onboot       = true
-  cmode        = "console"
-
-  cores    = 8
-  cpulimit = 400
-  cpuunits = 110
-  memory   = 8196
-  swap     = 2048
-
-  features {
-    nesting = true
-    fuse    = true
-  }
-
-  rootfs {
-    storage = "local-zfs"
-    size    = "32G"
-  }
-
-  network {
-    name   = "eth0"
-    bridge = "vmbr0"
-    ip     = "dhcp"
-  }
-
-  depends_on = [terraform_data.nixos_configurations["nixcloud"]]
-}
-
-resource "proxmox_lxc" "nixmon" {
-  hostname     = "nixmon"
-  target_node  = "proxmox"
-  ostemplate   = "local:vztmpl/nixmon.tar.xz"
-  unprivileged = true
-  onboot       = true
-  cmode        = "console"
-
-  cores    = 2
-  cpulimit = 100
-  cpuunits = 75
-  memory   = 4098
-  swap     = 2048
-
-  features {
-    nesting = true
-  }
-
-  rootfs {
-    storage = "local-zfs"
-    size    = "16G"
-  }
-
-  network {
-    name   = "eth0"
-    bridge = "vmbr0"
-    ip     = "dhcp"
-  }
-
-  depends_on = [terraform_data.nixos_configurations["nixmon"]]
-}
-
-resource "proxmox_lxc" "nixai" {
-  hostname     = "nixai"
-  target_node  = "proxmox"
-  ostemplate   = "local:vztmpl/nixai.tar.xz"
-  unprivileged = true
-  onboot       = true
-  cmode        = "console"
-
-  cores    = 2
-  cpulimit = 100
-  cpuunits = 75
-  memory   = 4098
-  swap     = 2048
-
-  features {
-    nesting = true
-  }
-
-  rootfs {
-    storage = "local-zfs"
-    size    = "32G"
-  }
-
-  network {
-    name   = "eth0"
-    bridge = "vmbr0"
-    ip     = "dhcp"
-  }
-
-  depends_on = [terraform_data.nixos_configurations["nixai"]]
+  depends_on = [terraform_data.nixos_configurations]
 }

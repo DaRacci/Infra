@@ -20,87 +20,104 @@
     flake-root.url = "github:srid/flake-root";
   };
 
-  outputs = inputs @ { flake-parts, ... }: flake-parts.lib.mkFlake { inherit inputs; } {
-    imports = [
-      inputs.devenv.flakeModule
-      inputs.treefmt-nix.flakeModule
-      inputs.flake-root.flakeModule
-    ];
+  outputs =
+    inputs@{ flake-parts, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [
+        inputs.devenv.flakeModule
+        inputs.treefmt-nix.flakeModule
+        inputs.flake-root.flakeModule
+      ];
 
-    systems = [ "x86_64-linux" "aarch64-linux" ];
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
 
-    perSystem = { config, system, pkgs, lib, ... }: {
-      _module.args.pkgs = import inputs.nixpkgs {
-        inherit system;
-        config = {
-          allowUnfreePredicate = pkg: pkg.pname == "terraform";
-        };
-      };
-
-      devenv.shells.default = {
-        # Fixes https://github.com/cachix/devenv/issues/528
-        containers = lib.mkForce { };
-
-        packages = with pkgs; [
-          cocogitto
-          git
-          age
-          sops
-          ssh-to-age
-          openssh
-        ];
-
-        languages = {
-          nix.enable = true;
-          terraform = {
-            enable = true;
-            package = pkgs.terraform.withPlugins (p: with p; [
-              tailscale
-              cloudflare
-              sops
-              proxmox
-              digitalocean
-            ]);
+      perSystem =
+        {
+          config,
+          system,
+          pkgs,
+          lib,
+          ...
+        }:
+        {
+          _module.args.pkgs = import inputs.nixpkgs {
+            inherit system;
+            config = {
+              allowUnfreePredicate = pkg: pkg.pname == "terraform";
+            };
           };
-        };
 
-        pre-commit.hooks = {
-          deadnix.enable = true;
-          statix.enable = true;
-          ripsecrets.enable = true;
-          typos = {
-            enable = true;
-            settings.ignored-words = [
-              "blong"
+          devenv.shells.default = {
+            # Fixes https://github.com/cachix/devenv/issues/528
+            containers = lib.mkForce { };
+
+            packages = with pkgs; [
+              cocogitto
+              git
+              age
+              sops
+              ssh-to-age
+              openssh
+              terragrunt
+            ];
+
+            languages = {
+              nix.enable = true;
+              terraform = {
+                enable = true;
+                package = pkgs.terraform.withPlugins (
+                  p: with p; [
+                    tailscale
+                    cloudflare
+                    sops
+                    proxmox
+                    digitalocean
+                    external
+                  ]
+                );
+              };
+            };
+
+            git-hooks.hooks = {
+              deadnix.enable = true;
+              statix.enable = true;
+              ripsecrets.enable = true;
+              typos = {
+                enable = true;
+                settings.ignored-words = [
+                  "blong"
+                ];
+              };
+              treefmt = {
+                enable = true;
+                package = config.treefmt.build.wrapper;
+              };
+            };
+          };
+
+          treefmt.config = {
+            inherit (config.flake-root) projectRootFile;
+
+            programs = {
+              terraform = {
+                enable = true;
+                inherit (config.devenv.shells.default.languages.terraform) package;
+              };
+              statix.enable = true;
+              prettier.enable = true;
+              shellcheck.enable = true;
+            };
+
+            settings.global.excludes = [
+              ".envrc"
+              "terraform/secrets.yaml"
+              "terraform/host-keys.yaml"
+              "terraform/.terraform.lock.hcl"
             ];
           };
-          treefmt = {
-            enable = true;
-            package = config.treefmt.build.wrapper;
-          };
         };
-      };
-
-      treefmt.config = {
-        inherit (config.flake-root) projectRootFile;
-
-        programs = {
-          terraform = {
-            enable = true;
-            inherit (config.devenv.shells.default.languages.terraform) package;
-          };
-          statix.enable = true;
-          prettier.enable = true;
-          shellcheck.enable = true;
-        };
-
-        settings.global.excludes = [
-          ".envrc"
-          "terraform/secrets.yaml"
-          "terraform/host-keys.yaml"
-          "terraform/.terraform.lock.hcl"
-        ];
-      };
     };
-  };
 }

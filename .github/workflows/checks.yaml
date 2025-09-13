@@ -1,6 +1,11 @@
-name: Formatting & Validation
+name: Terraform Validation
 
 on:
+  pull_request:
+    paths:
+      - "flake.*"
+      - "terraform/**"
+      - ".github/workflows/checks.yaml"
   push:
     paths:
       - "flake.*"
@@ -19,14 +24,11 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@main
         with:
           extra-conf: |
+            accept-flake-config = true
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup magic cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
-
-        # TODO - Add Statix, deadnix and any other format checks to flake checks.
-      - name: Run Format Checks
-        run: nix flake check --impure --allow-import-from-derivation --accept-flake-config --no-write-lock-file
+      - name: Run Formatter
+        run: nix fmt -- --ci
 
   validate:
     name: Terraform Validation

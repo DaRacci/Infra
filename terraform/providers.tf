@@ -7,8 +7,7 @@ terraform {
       source = "cloudflare/cloudflare"
     }
     proxmox = {
-      source  = "Telmate/proxmox"
-      version = "3.0.2-rc04"
+      source = "bpg/proxmox"
     }
     tailscale = {
       source = "tailscale/tailscale"
@@ -32,9 +31,13 @@ provider "cloudflare" {
 }
 
 provider "proxmox" {
-  pm_api_url          = "https://pve.racci.dev/api2/json"
-  pm_api_token_id     = data.sops_file.secrets.data["PROXMOX.TOKEN_ID"]
-  pm_api_token_secret = data.sops_file.secrets.data["PROXMOX.SECRET"]
+  endpoint  = "https://pve.racci.dev/"
+  api_token = "${data.sops_file.secrets.data["PROXMOX.TOKEN_ID"]}=${data.sops_file.secrets.data["PROXMOX.SECRET"]}"
+  insecure  = false
+
+  ssh {
+    agent = true
+  }
 }
 
 provider "tailscale" {

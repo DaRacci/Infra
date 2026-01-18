@@ -8,7 +8,7 @@ data "external" "device_roles" {
     "nix",
     "eval",
     "--json",
-    "github:DaRacci/nix-config#nixosConfigurations.nixio.options.host.device.role.type.functor.payload.values",
+    "github:DaRacci/nix-config#nixosConfigurations.nixio.options.host.device.role.type.functor.payload.elemType.functor.payload.values",
     "--apply",
     "(roles: roles |> builtins.map (x: { name = x; value = x; }) |> builtins.listToAttrs)"
   ]
@@ -76,12 +76,18 @@ resource "tailscale_acl" "as_hujson" {
       {
         src = ["tag:ci"]
         dst = ["tag:ingress"]
-        ip  = ["tcp:80-443", "udp:80-443"]
+        ip  = ["tcp:80-443", "udp:80-443", "udp:53"]
       },
 
       {
         src = ["autogroup:member"]
         dst = ["autogroup:self"]
+        ip  = ["*"]
+      },
+
+      {
+        src = ["autogroup:member"]
+        dst = ["tag:ingress"]
         ip  = ["*"]
       }
     ]
@@ -92,11 +98,23 @@ resource "tailscale_acl" "as_hujson" {
         accept = ["tag:ingress:443", "tag:ingress:80"]
         deny   = ["tag:server:22"]
         proto  = "tcp"
+      },
+      {
+        src = "autogroup:member"
+        accept = ["autogroup:self:*"]
+        proto  = "*"
+      },
+      {
+        src = "autogroup:member"
+        accept = ["tag:ingress:*"]
+        proto  = "*"
       }
     ]
 
     tagOwners = merge({
+      "tag:headless" = ["autogroup:member"]
       "tag:nixos"   = ["autogroup:member"]
+      "tag:virtual" = ["autogroup:member"]
       "tag:ci"      = ["autogroup:admin"]
       "tag:ingress" = ["autogroup:admin"]
       },

@@ -1,5 +1,9 @@
+# data "external" "nix-config_commit-hash" {
+#   program = ["nu", "../scripts/get-commit.nu"]
+# }
+
 locals {
-  all_containers = [for k, v in proxmox_lxc.containers : v]
+  all_containers = [for k, v in proxmox_virtual_environment_container.containers : v]
   nixos_configurations = [
     "nixmon",
     "nixarr",
@@ -12,13 +16,31 @@ locals {
 
   # Default values for containers
   container_defaults = {
-    rootfs_size = "16G"
+    rootfs_size = 16
     memory      = 2048
-    swap        = null
+    swap        = 0
     features = {
       nesting = true
-      fuse    = false
+      fuse    = true
     }
+  }
+
+  container_rocm_acceleration = {
+    #TODO:can't remember where these magic uid and gid came from
+    device_passthrogh = [
+      {
+        uid  = 0
+        gid  = 26
+        mode = "0660"
+        path = "/dev/dri/renderD128"
+      },
+      {
+        uid  = 0
+        gid  = 303
+        mode = "0660"
+        path = "/dev/kfd"
+      }
+    ]
   }
 
   container_configs = {
@@ -26,72 +48,90 @@ locals {
       cores    = 8
       cpuunits = 80
       memory   = 8192
-      swap     = 4096
-      mountpoint = {
-        key     = 0
-        slot    = 0
-        storage = "local-zfs"
-        mp      = "/nix/store"
-        size    = "128G"
+      mount_point = {
+        volume = "local-zfs"
+        path   = "/nix/store"
+        size   = "128G"
+        backup = false
       }
     }
+
     nixdev = {
       cores    = 8
       cpuunits = 105
       memory   = 16384
-      mountpoint = {
-        key     = 0
-        slot    = 0
-        storage = "local-zfs"
-        mp      = "/var/lib/coder"
-        size    = "128G"
+      rootfs_size = 32
+      mount_point = {
+        volume = "local-zfs"
+        path   = "/var/lib/coder"
+        size   = "128G"
+        backup = false
       }
     }
+
     nixio = {
       cores    = 6
       cpuunits = 120
       memory   = 4096
-      mountpoint = {
-        key     = 0
-        slot    = 0
-        storage = "local-zfs"
-        mp      = "/var/lib/minio/data"
-        size    = "512G"
-      }
+
+      mount_point = [
+        {
+          volume = "local-zfs:subvol-105-disk-1"
+          path   = "/var/lib/minio/data"
+          size   = "512G"
+          backup = false
+        },
+        {
+          volume = "fast"
+          path   = "/var/lib/seaweedfs"
+          size   = "512G"
+          backup = false
+        }
+      ]
     }
-    nixarr = {
+
+    nixarr = merge({
       cores    = 4
       cpuunits = 90
-      memory   = 4096
-      mountpoint = {
-        key     = 0
-        slot    = 0
-        storage = "naspool"
-        mp      = "/data/media"
-        size    = "2056G"
-        backup  = false
+      memory   = 6144
+      mount_point = {
+        volume        = "fast"
+        path          = "/data/media"
+        size          = "4156G"
+        backup        = false
+        mount_options = ["noatime"]
       }
-    }
+    }, local.container_rocm_acceleration)
+
     nixcloud = {
       cores       = 8
       cpuunits    = 110
-      memory      = 8196
-      rootfs_size = "32G"
-      features = {
-        fuse = true
+      memory      = 16392
+      swap        = 4096
+      rootfs_size = 32
+
+      mount_point = {
+        # TODO: dont hardcode the volume name
+        volume        = "/fast/subvol-106-disk-0"
+        path          = "/mnt/media/"
+        read_only     = true
+        backup        = false
+        mount_options = ["noatime", "lazytime"]
       }
     }
+
     nixmon = {
       cores    = 2
       cpuunits = 75
-      memory   = 1024
+      memory   = 4096
     }
-    nixai = {
+
+    nixai = (merge({
       cores       = 16
       cpuunits    = 75
       memory      = 16384
-      rootfs_size = "96G"
-    }
+      rootfs_size = 96
+    }, local.container_rocm_acceleration))
   }
 }
 
@@ -101,14 +141,18 @@ resource "terraform_data" "nixos_configurations" {
   provisioner "local-exec" {
     command = "./scripts/build-image-and-transfer.nu ${each.key}"
   }
+
+  # triggers_replace = [
+  #   data.external.nix-config_commit-hash.result.sha
+  # ]
 }
 
 resource "terraform_data" "init_after_creation" {
-  for_each = { for idx, val in local.all_containers : val.hostname => val }
+  for_each = local.container_configs
 
   provisioner "remote-exec" {
     inline = [
-      "LXC_ID=$(pct list | grep \"${each.value.hostname}\" | awk '{print $1}')",
+      "LXC_ID=$(pct list | grep \"${each.key}\" | awk '{print $1}')",
       "[ -z \"$LXC_ID\" ] && echo \"Container not found\" && exit 1",
       "LXC_CONF=/etc/pve/lxc/\"$LXC_ID\".conf",
 
@@ -131,7 +175,7 @@ resource "terraform_data" "init_after_creation" {
 
       # Send the SSH Private key to the LXC container followed by Ctrl+D
       # Use the full path so we don't use the bash built-in echo
-      "/usr/bin/echo -ne \"${data.sops_file.ssh_keys.data["SSH_PRIVATE_KEYS.${each.value.hostname}"]}\\n\\x04\" | dtach -p \"$CONSOLE_FILE\"",
+      "/usr/bin/echo -ne \"${data.sops_file.ssh_keys.data["SSH_PRIVATE_KEYS.${each.key}"]}\\n\\x04\" | dtach -p \"$CONSOLE_FILE\"",
       #endregion
 
       #region Do a rebuild to ensure proper configuration
@@ -147,53 +191,98 @@ resource "terraform_data" "init_after_creation" {
   }
 
   triggers_replace = [
-    each.value.id
+    # Due to the migration from the previous proxmox provider to the new one, ids changed from "<node>:lxc:<id>" to just "<id>".
+    replace(proxmox_virtual_environment_container.containers[each.key].id, "/.*\\//", "")
   ]
+
+  depends_on = [proxmox_virtual_environment_container.containers]
 }
 
-resource "proxmox_lxc" "containers" {
+resource "proxmox_virtual_environment_container" "containers" {
   for_each = local.container_configs
 
-  hostname     = each.key
-  target_node  = "proxmox"
-  ostemplate   = "local:vztmpl/${each.key}.tar.xz"
-  unprivileged = true
-  onboot       = true
-  cmode        = "console"
+  node_name     = "proxmox"
+  unprivileged  = true
+  start_on_boot = true
+  started       = true
 
-  cores    = each.value.cores
-  cpulimit = try(each.value.cpulimit, null)
-  cpuunits = each.value.cpuunits
-  memory   = lookup(each.value, "memory", local.container_defaults.memory)
+  operating_system {
+    template_file_id = ""
+    type             = "nixos"
+  }
+
+  initialization {
+    hostname = each.key
+    ip_config {
+      ipv4 {
+        address = "dhcp"
+      }
+      ipv6 {
+        address = "dhcp"
+      }
+    }
+  }
+
+  console {
+    enabled   = true
+    type      = "console"
+    tty_count = 2
+  }
+
+  cpu {
+    cores = each.value.cores
+    units = each.value.cpuunits
+  }
+
+  memory {
+    dedicated = lookup(each.value, "memory", local.container_defaults.memory)
+    swap      = lookup(each.value, "swap", local.container_defaults.swap)
+  }
 
   features {
     nesting = lookup(lookup(each.value, "features", {}), "nesting", local.container_defaults.features.nesting)
     fuse    = lookup(lookup(each.value, "features", {}), "fuse", local.container_defaults.features.fuse)
   }
 
-  rootfs {
-    storage = "local-zfs"
-    size    = lookup(each.value, "rootfs_size", local.container_defaults.rootfs_size)
+  disk {
+    datastore_id = "local-zfs"
+    size         = lookup(each.value, "rootfs_size", local.container_defaults.rootfs_size)
   }
 
-  dynamic "mountpoint" {
-    for_each = try(each.value.mountpoint, null) != null ? [each.value.mountpoint] : []
+  dynamic "mount_point" {
+    for_each = try(
+      tolist(each.value.mount_point),
+      [each.value.mount_point],
+      []
+    )
     content {
-      key     = mountpoint.value.key
-      slot    = mountpoint.value.slot
-      storage = mountpoint.value.storage
-      mp      = mountpoint.value.mp
-      size    = mountpoint.value.size
-      backup  = try(mountpoint.value.backup, null)
+      volume        = mount_point.value.volume
+      path          = mount_point.value.path
+      size          = try(mount_point.value.size, null)
+      backup        = try(mount_point.value.backup, true)
+      read_only     = try(mount_point.value.read_only, false)
+      mount_options = try(mount_point.value.mount_options, null)
     }
   }
 
-  network {
-    name   = "eth0"
-    bridge = "vmbr0"
-    ip     = "dhcp"
-    ip6    = "dhcp"
+  dynamic "device_passthrough" {
+    for_each = try(
+      tolist(each.value.device_passthrogh),
+      [each.value.device_passthrogh],
+      []
+    )
+    content {
+      uid  = device_passthrough.value.uid
+      gid  = device_passthrough.value.gid
+      mode = device_passthrough.value.mode
+      path = device_passthrough.value.path
+    }
   }
 
-  depends_on = [terraform_data.nixos_configurations]
+  network_interface {
+    name   = "eth0"
+    bridge = "vmbr0"
+  }
+
+  # depends_on = [terraform_data.nixos_configurations]
 }

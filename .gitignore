@@ -8,3 +8,6 @@ result-*
 # Terraform
 .terraform
 .terraform.*
+
+# AI
+.workspaces/

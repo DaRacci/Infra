@@ -1,0 +1,26 @@
+when:
+  - event: [push, pull_request]
+    path:
+      include:
+        - "flake.*"
+        - "terraform/**"
+        - ".woodpecker/**"
+
+steps:
+  - name: Format
+    image: registry.racci.dev/lix-woodpecker:latest
+    pull: true
+    commands: nix fmt -- --ci
+
+  - name: Terraform Validate
+    image: registry.racci.dev/lix-woodpecker:latest
+    pull: true
+    directory: terraform
+    commands: |
+      nix develop --command terraform init -backend=false -upgrade
+      nix develop --command terraform validate
+
+  - name: Run flake checker
+    image: registry.racci.dev/lix-woodpecker:latest
+    pull: true
+    commands: nix run nixpkgs#flake-checker

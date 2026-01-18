@@ -1,0 +1,73 @@
+# Drift detection - check if infrastructure matches state
+# Cron: "drift-check" in Woodpecker UI (runs weekly or daily as needed)
+# Required secrets: same as deploy.yaml plus github_token for issue creation
+
+when:
+  - event: cron
+    cron: drift-check
+
+steps:
+  - name: setup-sops
+    image: nixos/nix:latest
+    environment:
+      SSH_AGE_KEY:
+        from_secret: ssh_age_key
+    commands:
+      - mkdir -p ~/.config/sops/age
+      - echo "$SSH_AGE_KEY" > ~/.config/sops/age/keys.txt
+
+  - name: detect-drift
+    image: nixos/nix:latest
+    environment:
+      CLOUDFLARE_API_TOKEN:
+        from_secret: cloudflare_api_token
+      TAILSCALE_API_KEY:
+        from_secret: tailscale_api_key
+      DIGITALOCEAN_TOKEN:
+        from_secret: digitalocean_token
+      TF_TOKEN_app_terraform_io:
+        from_secret: tf_cloud_token
+      SOPS_AGE_KEY_FILE: /root/.config/sops/age/keys.txt
+    directory: terraform
+    commands: |
+      nix develop --impure --command terraform plan -detailed-exitcode -out=/tmp/drift.plan 2>&1 | tee /tmp/drift.txt || DRIFT_EXIT=$?
+      nix develop --impure --command terraform init
+      if [ "${DRIFT_EXIT:-0}" -eq 2 ]; then
+        echo "DRIFT_DETECTED=true" >> /woodpecker/env
+        echo "Infrastructure drift detected!"
+      else
+        echo "No drift detected"
+      fi
+
+  - name: create-issue
+    image: alpine:latest
+    environment:
+      GITHUB_TOKEN:
+        from_secret: github_token
+    commands:
+      - apk add --no-cache github-cli
+      - |
+        cat > /tmp/issue.md << 'ISSUE_EOF'
+        ## Infrastructure Drift Detected
+
+        The Terraform state does not match the actual infrastructure.
+
+        <details>
+        <summary>Plan output</summary>
+
+        ```hcl
+        ISSUE_EOF
+      - cat /tmp/drift.txt >> /tmp/issue.md
+      - |
+        cat >> /tmp/issue.md << 'ISSUE_EOF'
+        ```
+
+        </details>
+
+        Please review and either:
+        1. Run `terraform apply` to sync infrastructure to desired state
+        2. Run `terraform refresh` if changes were intentional
+        ISSUE_EOF
+      - gh issue create --title "Infrastructure Drift Detected" --body-file /tmp/issue.md --label infrastructure,drift --repo ${CI_REPO}
+    when:
+      evaluate: 'DRIFT_DETECTED == "true"'

@@ -1,0 +1,13 @@
+when:
+  - event: push
+    branch: master
+  - event: pull_request
+
+steps:
+  - name: GitGuardian Secret Scan
+    image: gitguardian/ggshield:latest
+    pull: true
+    environment:
+      GITGUARDIAN_API_KEY:
+        from_secret: GITGUARDIAN_API_KEY
+    commands: ggshield secret scan commit-range ${CI_PREV_COMMIT_SHA}..

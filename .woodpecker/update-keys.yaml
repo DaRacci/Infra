@@ -1,0 +1,62 @@
+# Sync SSH host keys from nix-config repo daily
+# Cron: "daily-keys" in Woodpecker UI
+#
+# Required secrets:
+#   - ssh_age_key: Age private key for SOPS decryption
+#   - github_token: GitHub PAT for cloning nix-config and committing
+
+when:
+  - event: cron
+    cron: daily-keys
+  - event: push
+    repo: DaRacci/nix-config
+    branch: master
+    path:
+      - hosts/server/**/secrets.yaml
+
+steps:
+  - name: sync-host-keys
+    image: nixos/nix:latest
+    environment:
+      SSH_AGE_KEY:
+        from_secret: ssh_age_key
+      GITHUB_TOKEN:
+        from_secret: github_token
+    commands:
+      - nix-env -iA nixpkgs.sops nixpkgs.age nixpkgs.git nixpkgs.jq
+      - mkdir -p ~/.config/sops/age
+      - echo "$SSH_AGE_KEY" > ~/.config/sops/age/keys.txt
+      - git clone --depth 1 https://x-access-token:$GITHUB_TOKEN@github.com/DaRacci/nix-config.git /tmp/nix-config
+      - |
+        for host_dir in /tmp/nix-config/hosts/*/; do
+          host=$(basename "$host_dir")
+          key_file="$host_dir/secrets.yaml"
+          if [ -f "$key_file" ]; then
+            ssh_key=$(sops -d --extract '["ssh_private_key"]' "$key_file" 2>/dev/null || echo "")
+            if [ -n "$ssh_key" ]; then
+              echo "  $host: |" >> /tmp/keys.yaml
+              echo "$ssh_key" | sed 's/^/    /' >> /tmp/keys.yaml
+            fi
+          fi
+        done
+      - |
+        if [ -f /tmp/keys.yaml ]; then
+          sops -e /tmp/keys.yaml > terraform/host-keys.yaml
+        fi
+
+  - name: commit-changes
+    image: alpine/git:latest
+    environment:
+      GITHUB_TOKEN:
+        from_secret: github_token
+    commands:
+      - |
+        if git diff --quiet terraform/host-keys.yaml; then
+          echo "No changes to host-keys.yaml"
+          exit 0
+        fi
+      - git config user.name "Woodpecker CI"
+      - git config user.email "ci@woodpecker.local"
+      - git add terraform/host-keys.yaml
+      - git commit -m "chore: sync SSH host keys from nix-config"
+      - git push origin HEAD

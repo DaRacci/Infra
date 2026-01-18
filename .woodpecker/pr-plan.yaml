@@ -1,0 +1,61 @@
+# Post Terraform plan as PR comment
+# Required secrets:
+#   - cloudflare_api_token, tailscale_api_key, digitalocean_token
+#   - ssh_age_key, tf_cloud_token, github_token
+
+when:
+  - event: pull_request
+
+steps:
+  - name: setup-sops
+    image: registry.racci.dev/lix-woodpecker:latest
+    pull: true
+    environment:
+      SSH_AGE_KEY:
+        from_secret: ssh_age_key
+    commands: |
+      mkdir -p ~/.config/sops/age
+      echo "$SSH_AGE_KEY" > ~/.config/sops/age/keys.txt
+
+  - name: terraform-plan
+    image: registry.racci.dev/lix-woodpecker:latest
+    pull: true
+    environment:
+      CLOUDFLARE_API_TOKEN:
+        from_secret: cloudflare_api_token
+      TAILSCALE_API_KEY:
+        from_secret: tailscale_api_key
+      DIGITALOCEAN_TOKEN:
+        from_secret: digitalocean_token
+      TF_TOKEN_app_terraform_io:
+        from_secret: tf_cloud_token
+      SOPS_AGE_KEY_FILE: /root/.config/sops/age/keys.txt
+    directory: terraform
+    commands: |
+      nix develop --command terraform init
+      nix develop --command terraform plan -no-color 2>&1 | tee /tmp/plan.txt || true
+
+  - name: comment-pr
+    image: alpine:latest
+    environment:
+      GITHUB_TOKEN:
+        from_secret: github_token
+    commands:
+      - apk add --no-cache github-cli
+      - |
+        cat > /tmp/comment.md << 'COMMENT_EOF'
+        ## Terraform Plan
+
+        <details>
+        <summary>Click to expand plan output</summary>
+
+        ```hcl
+        COMMENT_EOF
+      - cat /tmp/plan.txt >> /tmp/comment.md
+      - |
+        cat >> /tmp/comment.md << 'COMMENT_EOF'
+        ```
+
+        </details>
+        COMMENT_EOF
+      - gh pr comment ${CI_COMMIT_PULL_REQUEST} --body-file /tmp/comment.md --repo ${CI_REPO}

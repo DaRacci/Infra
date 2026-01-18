@@ -70,12 +70,12 @@
                 enable = true;
                 package = pkgs.terraform.withPlugins (
                   p: with p; [
-                    tailscale
-                    cloudflare
-                    sops
-                    proxmox
-                    digitalocean
-                    external
+                    tailscale_tailscale
+                    cloudflare_cloudflare
+                    carlpett_sops
+                    bpg_proxmox
+                    digitalocean_digitalocean
+                    hashicorp_external
                   ]
                 );
               };
@@ -96,6 +96,10 @@
                 package = config.treefmt.build.wrapper;
               };
             };
+
+            enterShell = ''
+              terraform -chdir=terraform init -backend=false -upgrade > /dev/null 2>&1
+            '';
           };
 
           treefmt.config = {

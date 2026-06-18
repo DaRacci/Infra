@@ -1,6 +1,12 @@
 locals {
   bling-bling-blong = [for device in data.tailscale_devices.devices.devices : device if device.name == "bling-bling-blong.degu-beta.ts.net"][0]
   nixio             = [for device in data.tailscale_devices.devices.devices : device if device.name == "nixio.degu-beta.ts.net"][0]
+
+  # Tag lists for device classification (from nix-config type system)
+  device_role_tags    = [for role in keys(data.external.device_roles.result) : "tag:${role}"]
+  device_purpose_tags = [for purpose in keys(data.external.device_purposes.result) : "tag:${purpose}"]
+  # All member-owned device tags (roles + purposes) that should have full access
+  device_class_tags = concat(local.device_role_tags, local.device_purpose_tags)
 }
 
 data "external" "device_roles" {
@@ -35,9 +41,6 @@ resource "tailscale_device_subnet_routes" "bling-bling-blong_routes" {
     "::/0",
 
     # Network Ranges
-    "10.10.100.0/24",
-    "10.10.120.0/24",
-    "10.10.200.0/24",
     "192.168.1.0/24"
   ]
 }
@@ -67,56 +70,37 @@ resource "tailscale_tailnet_settings" "settings" {
 resource "tailscale_acl" "as_hujson" {
   acl = jsonencode({
     grants = [
+      # Admin: unrestricted access to whole tailnet
       {
         src = ["autogroup:admin"]
         dst = ["*"]
         ip  = ["*"]
       },
 
+      # CI runners (GitHub Actions): HTTP/HTTPS/DNS to ingress hosts only (cache.racci.dev)
       {
         src = ["tag:ci"]
         dst = ["tag:ingress"]
-        ip  = ["tcp:80-443", "udp:80-443", "udp:53"]
+        ip  = ["tcp:80", "tcp:443", "udp:80", "udp:443", "udp:53"]
       },
 
+      # Everyone else: full access
+      # autogroup:member covers interactively-logged-in devices (phones, tablets, Apple TV, etc.)
+      # device_class_tags covers ephemeral NixOS hosts with role/purpose tags (tag:server, tag:desktop, etc.)
       {
-        src = ["autogroup:member"]
-        dst = ["autogroup:self"]
+        src = concat(["autogroup:member"], local.device_class_tags)
+        dst = ["*"]
         ip  = ["*"]
       },
-
-      {
-        src = ["autogroup:member"]
-        dst = ["tag:ingress"]
-        ip  = ["*"]
-      }
-    ]
-
-    tests = [
-      {
-        src    = "tag:ci"
-        accept = ["tag:ingress:443", "tag:ingress:80"]
-        deny   = ["tag:server:22"]
-        proto  = "tcp"
-      },
-      {
-        src    = "autogroup:member"
-        accept = ["autogroup:self:*"]
-        proto  = "*"
-      },
-      {
-        src    = "autogroup:member"
-        accept = ["tag:ingress:*"]
-        proto  = "*"
-      }
     ]
 
     tagOwners = merge({
-      "tag:headless" = ["autogroup:member"]
-      "tag:nixos"    = ["autogroup:member"]
-      "tag:virtual"  = ["autogroup:member"]
       "tag:ci"       = ["autogroup:admin"]
       "tag:ingress"  = ["autogroup:admin"]
+      "tag:headless" = ["autogroup:member"]
+      "tag:nixos"    = ["autogroup:member"]
+      "tag:server"   = ["autogroup:member"]
+      "tag:virtual"  = ["autogroup:member"]
       },
       { for role in data.external.device_roles.result : "tag:${role}" => ["autogroup:member"] },
       { for purpose in data.external.device_purposes.result : "tag:${purpose}" => ["autogroup:member"] }
@@ -125,10 +109,51 @@ resource "tailscale_acl" "as_hujson" {
     autoApprovers = {
       exitNode = ["tag:ingress"]
       routes = {
-        "192.168.2.0/24" = ["tag:ingress"]
         "0.0.0.0/24"     = ["tag:ingress"]
         "::/0"           = ["tag:ingress"]
+        "192.168.1.0/24" = ["tag:ingress"]
+        "192.168.2.0/24" = ["tag:ingress"]
       }
     }
+
+    tests = [
+      # === CI runner restrictions ===
+      {
+        src    = "tag:ci"
+        accept = ["tag:ingress:80", "tag:ingress:443"]
+        proto  = "tcp"
+      },
+      {
+        src    = "tag:ci"
+        accept = ["tag:ingress:53"]
+        proto  = "udp"
+      },
+      {
+        src  = "tag:ci"
+        deny = ["tag:ingress:22"]
+      },
+      {
+        src  = "tag:ci"
+        deny = ["tag:server:22", "tag:desktop:22"]
+      },
+
+      # === Non-restricted devices ===
+      {
+        src    = "me@racci.dev"
+        accept = ["tag:ingress:80", "tag:ingress:443", "tag:ingress:22", "tag:ingress:53"]
+      },
+      {
+        src    = "tag:server"
+        accept = ["tag:ingress:80", "tag:ingress:443"]
+      },
+      {
+        src    = "tag:desktop"
+        accept = ["tag:server:22", "tag:ingress:53", "tag:ingress:80", "tag:ingress:443"]
+      },
+      {
+        src    = "tag:laptop"
+        accept = ["tag:server:22", "tag:ingress:53", "tag:ingress:80", "tag:ingress:443"]
+      },
+    ]
   })
 }

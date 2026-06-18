@@ -9,6 +9,7 @@ locals {
       zone_id      = "32cc2f58a0e6ba5d390f2219af9e83ed"
       dkim_value   = "dyj3dpfllc7brvxpnwdjzmk2is3mfjk2merbjrwns2siher4p64ra"
       verification = "protonmail-verification=540667c4f6981c58787105d33fb0a156c14b9ebb"
+      dmarc_rua    = "mailto:3d6ae971001b4e958194b313d3a70e83@dmarc-reports.cloudflare.net"
     }
   ]
 
@@ -46,9 +47,12 @@ resource "cloudflare_dns_record" "dmarc" {
 
   zone_id = each.key
   name    = "_dmarc"
-  content = "v=DMARC1; p=reject; rua=mailto:${var.admin};"
-  type    = "TXT"
-  ttl     = 14400
+  content = try(
+    "v=DMARC1; p=reject; rua=${each.value.dmarc_rua};",
+    "v=DMARC1; p=reject; rua=mailto:${var.admin};"
+  )
+  type = "TXT"
+  ttl  = 14400
 }
 
 resource "cloudflare_dns_record" "dkim" {

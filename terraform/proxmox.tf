@@ -91,9 +91,11 @@ locals {
     }
 
     nixarr = merge({
-      cores    = 4
-      cpuunits = 90
-      memory   = 6144
+      cores       = 4
+      cpuunits    = 90
+      memory      = 6144
+      rootfs_size = 24
+      swap        = 2048
       mount_point = {
         volume        = "fast"
         path          = "/data/media"
@@ -106,7 +108,7 @@ locals {
     nixcloud = {
       cores       = 8
       cpuunits    = 110
-      memory      = 16392
+      memory      = 16384
       swap        = 4096
       rootfs_size = 32
 
@@ -123,7 +125,15 @@ locals {
     nixmon = {
       cores    = 2
       cpuunits = 75
-      memory   = 4096
+      memory   = 8192
+      swap     = 2048
+      mount_point = {
+        volume        = "fast:subvol-108-disk-0"
+        path          = "/var/lib/prometheus2"
+        size          = "32G"
+        backup        = true
+        mount_options = ["noatime", "lazytime", "nodev", "noexec", "nosuid"]
+      }
     }
 
     nixai = (merge({
@@ -131,6 +141,13 @@ locals {
       cpuunits    = 75
       memory      = 16384
       rootfs_size = 96
+      swap        = 2048
+      mount_point = {
+        volume = "fast:subvol-103-disk-0"
+        path   = "/var/lib/hermes"
+        size   = "32G"
+        backup = true
+      }
     }, local.container_rocm_acceleration))
   }
 }

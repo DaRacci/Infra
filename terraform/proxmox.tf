@@ -57,9 +57,9 @@ locals {
     }
 
     nixdev = {
-      cores    = 8
-      cpuunits = 105
-      memory   = 16384
+      cores       = 8
+      cpuunits    = 105
+      memory      = 16384
       rootfs_size = 32
       mount_point = {
         volume = "local-zfs"

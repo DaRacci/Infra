@@ -100,12 +100,12 @@ resource "tailscale_acl" "as_hujson" {
         proto  = "tcp"
       },
       {
-        src = "autogroup:member"
+        src    = "autogroup:member"
         accept = ["autogroup:self:*"]
         proto  = "*"
       },
       {
-        src = "autogroup:member"
+        src    = "autogroup:member"
         accept = ["tag:ingress:*"]
         proto  = "*"
       }
@@ -113,10 +113,10 @@ resource "tailscale_acl" "as_hujson" {
 
     tagOwners = merge({
       "tag:headless" = ["autogroup:member"]
-      "tag:nixos"   = ["autogroup:member"]
-      "tag:virtual" = ["autogroup:member"]
-      "tag:ci"      = ["autogroup:admin"]
-      "tag:ingress" = ["autogroup:admin"]
+      "tag:nixos"    = ["autogroup:member"]
+      "tag:virtual"  = ["autogroup:member"]
+      "tag:ci"       = ["autogroup:admin"]
+      "tag:ingress"  = ["autogroup:admin"]
       },
       { for role in data.external.device_roles.result : "tag:${role}" => ["autogroup:member"] },
       { for purpose in data.external.device_purposes.result : "tag:${purpose}" => ["autogroup:member"] }

@@ -1,7 +1,7 @@
 when:
+  - event: [pull_request, manual]
   - event: push
     branch: master
-  - event: pull_request
 
 steps:
   - name: GitGuardian Secret Scan

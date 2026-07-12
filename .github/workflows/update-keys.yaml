@@ -12,12 +12,12 @@ jobs:
       contents: write
     steps:
       - name: Checkout Infra Repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: "Infra"
 
       - name: Checkout Nix-Config Repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: "DaRacci/nix-config"
           path: "nix-config"

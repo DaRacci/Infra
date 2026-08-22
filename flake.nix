@@ -87,9 +87,16 @@
               ripsecrets.enable = true;
               typos = {
                 enable = true;
-                settings.ignored-words = [
-                  "blong"
-                ];
+                settings = {
+                  ignored-words = [
+                    "blong"
+                  ];
+                  # SOPS-encrypted yaml is ciphertext; spellcheck is meaningless on it.
+                  force-exclude = true;
+                  exclude = [
+                    "terraform/*.yaml"
+                  ];
+                };
               };
               treefmt = {
                 enable = true;

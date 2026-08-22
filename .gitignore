@@ -8,6 +8,7 @@ result-*
 # Terraform
 .terraform
 .terraform.*
+.terragrunt-cache
 
 # AI
 .workspaces/

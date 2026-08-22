@@ -14,6 +14,9 @@ locals {
     "nixai"
   ]
 
+  # Proxmox SSH host, used by the remote-exec provisioner below.
+  proxmox_host = data.sops_file.secrets.data["PROXMOX.HOST"]
+
   secure_mount_options = ["noatime", "lazytime", "nodev", "noexec", "nosuid"]
 
   # Default values for containers
@@ -224,7 +227,7 @@ locals {
 resource "terraform_data" "nixos_configurations" {
   for_each = { for val in local.nixos_configurations : val => val }
   provisioner "local-exec" {
-    command = "./scripts/build-image-and-transfer.nu ${each.key}"
+    command = "${local.repo_root}/scripts/build-image-and-transfer.nu ${each.key}"
   }
 
   # triggers_replace = [

@@ -105,7 +105,8 @@
             };
 
             enterShell = ''
-              terraform -chdir=terraform init -backend=false -upgrade > /dev/null 2>&1
+              # Auto-init all Terragrunt units on shell entry.
+              cd terraform/units && terragrunt run --all init > /dev/null 2>&1 || true
             '';
           };
 

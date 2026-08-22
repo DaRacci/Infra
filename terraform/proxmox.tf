@@ -14,6 +14,8 @@ locals {
     "nixai"
   ]
 
+  secure_mount_options = ["noatime", "lazytime", "nodev", "noexec", "nosuid"]
+
   # Default values for containers
   container_defaults = {
     rootfs_size = 16
@@ -127,13 +129,22 @@ locals {
       cpuunits = 75
       memory   = 8192
       swap     = 2048
-      mount_point = {
-        volume        = "fast:subvol-108-disk-0"
-        path          = "/var/lib/prometheus2"
-        size          = "32G"
-        backup        = true
-        mount_options = ["noatime", "lazytime", "nodev", "noexec", "nosuid"]
-      }
+      mount_point = [
+        {
+          volume        = "fast:subvol-108-disk-0"
+          path          = "/var/lib/prometheus2"
+          size          = "32G"
+          backup        = true
+          mount_options = local.secure_mount_options
+        },
+        {
+          volume        = "fast:subvol-108-disk-1"
+          path          = "/var/lib/loki"
+          size          = "8G"
+          backup        = false
+          mount_options = local.secure_mount_options
+        }
+      ]
     }
 
     nixai = (merge({
@@ -145,10 +156,67 @@ locals {
       mount_point = {
         volume = "fast:subvol-103-disk-0"
         path   = "/var/lib/hermes"
-        size   = "32G"
+        size   = "64G"
         backup = true
       }
     }, local.container_rocm_acceleration))
+
+    nixstor = {
+      cores       = 8
+      cpuunits    = 100
+      memory      = 8192
+      rootfs_size = 16
+      mount_point = {
+        volume = "fast"
+        path   = "/var/lib/seaweedfs"
+        size   = "1T"
+        backup = false
+      }
+    }
+
+    nixdb = {
+      cores       = 4
+      cpuunits    = 100
+      memory      = 4096
+      rootfs_size = 16
+      mount_point = [
+        {
+          volume        = "fast"
+          path          = "/var/lib/postgresql"
+          size          = "64G"
+          backup        = true
+          mount_options = local.secure_mount_options
+        },
+        {
+          volume        = "fast"
+          path          = "/var/lib/postgresql/backup"
+          size          = "64G"
+          backup        = false
+          mount_options = local.secure_mount_options
+        }
+      ]
+    }
+
+    nixauth = {
+      cores       = 2
+      cpuunits    = 100
+      memory      = 1024
+      rootfs_size = 8
+      mount_point = {
+        volume        = "fast"
+        path          = "/var/lib/kanidm"
+        size          = "4G"
+        backup        = true
+        mount_options = local.secure_mount_options
+      }
+      mount_point = {
+        volume        = "fast"
+        path          = "/var/lib/kanidm/backup"
+        size          = "4G"
+        backup        = false
+        mount_options = local.secure_mount_options
+      }
+    }
   }
 }
 

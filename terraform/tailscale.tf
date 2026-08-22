@@ -121,23 +121,21 @@ resource "tailscale_acl" "as_hujson" {
       {
         src    = "tag:ci"
         accept = ["tag:ingress:80", "tag:ingress:443"]
+        deny   = ["tag:server:80", "tag:server:443", "tag:desktop:80", "tag:desktop:443"]
         proto  = "tcp"
       },
       {
         src    = "tag:ci"
         accept = ["tag:ingress:53"]
+        deny   = ["tag:server:53", "tag:desktop:53"]
         proto  = "udp"
       },
       {
         src  = "tag:ci"
-        deny = ["tag:ingress:22"]
-      },
-      {
-        src  = "tag:ci"
-        deny = ["tag:server:22", "tag:desktop:22"]
+        deny = ["tag:ingress:22", "tag:server:22", "tag:desktop:22"]
       },
 
-      # === Non-restricted devices ===
+      # === Misc ===
       {
         src    = "me@racci.dev"
         accept = ["tag:ingress:80", "tag:ingress:443", "tag:ingress:22", "tag:ingress:53"]

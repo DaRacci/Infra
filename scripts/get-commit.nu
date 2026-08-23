@@ -1,8 +1,10 @@
 #!/usr/bin/env nu
 
-const OWNER = "DaRacci"
-const REPO = "nix-config"
-const BRANCH  = "master"
+use lib.nu *
+
+let OWNER = $env.NIX_CONFIG_OWNER
+let REPO = $env.NIX_CONFIG_REPO
+let BRANCH = $env.NIX_CONFIG_BRANCH
 
 def main [] {
   let url = $"https://api.github.com/repos/($OWNER)/($REPO)/commits/($BRANCH)"

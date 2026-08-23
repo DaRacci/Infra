@@ -2,19 +2,14 @@
 #   program = ["nu", "../scripts/get-commit.nu"]
 # }
 
-locals {
-  all_containers = [for k, v in proxmox_virtual_environment_container.containers : v]
-  nixos_configurations = [
-    "nixmon",
-    "nixarr",
-    "nixcloud",
-    "nixserv",
-    "nixdev",
-    "nixio",
-    "nixai"
-  ]
+data "external" "nixos_hosts" {
+  program = ["nu", "${local.repo_root}/scripts/get-servers.nu"]
+}
 
-  # Proxmox SSH host, used by the remote-exec provisioner below.
+locals {
+  all_containers       = [for k, v in proxmox_virtual_environment_container.containers : v]
+  nixos_configurations = keys(data.external.nixos_hosts.result)
+
   proxmox_host = data.sops_file.secrets.data["PROXMOX.HOST"]
 
   secure_mount_options = ["noatime", "lazytime", "nodev", "noexec", "nosuid"]
@@ -98,7 +93,7 @@ locals {
     nixarr = merge({
       cores       = 4
       cpuunits    = 90
-      memory      = 6144
+      memory      = 12288
       rootfs_size = 24
       swap        = 2048
       mount_point = {
@@ -153,7 +148,7 @@ locals {
     nixai = (merge({
       cores       = 16
       cpuunits    = 75
-      memory      = 16384
+      memory      = 24576
       rootfs_size = 96
       swap        = 2048
       mount_point = {
@@ -372,5 +367,5 @@ resource "proxmox_virtual_environment_container" "containers" {
     bridge = "vmbr0"
   }
 
-  # depends_on = [terraform_data.nixos_configurations]
+  depends_on = [terraform_data.nixos_configurations]
 }

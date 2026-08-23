@@ -6,6 +6,13 @@ when:
         - "terraform/**"
         - ".woodpecker/**"
 
+matrix:
+  UNIT:
+    - dns
+    - tailscale
+    - cloud
+    - proxmox
+
 steps:
   - name: Format
     image: registry.racci.dev/lix-woodpecker:latest
@@ -15,10 +22,9 @@ steps:
   - name: Terraform Validate
     image: registry.racci.dev/lix-woodpecker:latest
     pull: true
-    directory: terraform
+    directory: terraform/units/${UNIT}
     commands: |
-      nix develop --command terraform init -backend=false -upgrade
-      nix develop --command terraform validate
+      nix develop --impure --command terragrunt validate
 
   - name: Run flake checker
     image: registry.racci.dev/lix-woodpecker:latest

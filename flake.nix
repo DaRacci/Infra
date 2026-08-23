@@ -103,11 +103,6 @@
                 package = config.treefmt.build.wrapper;
               };
             };
-
-            enterShell = ''
-              # Auto-init all Terragrunt units on shell entry.
-              cd terraform/units && terragrunt run --all init > /dev/null 2>&1 || true
-            '';
           };
 
           treefmt.config = {

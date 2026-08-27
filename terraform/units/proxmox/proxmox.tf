@@ -16,12 +16,24 @@ locals {
 
   # Default values for containers
   container_defaults = {
-    rootfs_size = 16
-    memory      = 2048
-    swap        = 0
+    cpu = {
+      cores = 2
+      limit = 0
+      units = 1024
+    }
+
+    memory = {
+      dedicated = 2048
+      swap      = 0
+    }
+
+    disk = {
+      size = 16
+    }
+
     features = {
       nesting = true
-      fuse    = true
+      fuse    = false
     }
   }
 
@@ -45,9 +57,15 @@ locals {
 
   container_configs = {
     nixserv = {
-      cores    = 8
-      cpuunits = 80
-      memory   = 8192
+      cpu = {
+        cores = 8
+        units = 80
+      }
+
+      memory = {
+        dedicated = 8192
+      }
+
       mount_point = {
         volume = "local-zfs"
         path   = "/nix/store"
@@ -57,10 +75,23 @@ locals {
     }
 
     nixdev = {
-      cores       = 8
-      cpuunits    = 105
-      memory      = 16384
-      rootfs_size = 32
+      cpu = {
+        cores = 8
+        units = 105
+      }
+
+      memory = {
+        dedicated = 16384
+      }
+
+      disk = {
+        size = 32
+      }
+
+      features = {
+        fuse = true
+      }
+
       mount_point = {
         volume = "local-zfs"
         path   = "/var/lib/coder"
@@ -70,9 +101,18 @@ locals {
     }
 
     nixio = {
-      cores    = 6
-      cpuunits = 120
-      memory   = 4096
+      cpu = {
+        cores = 6
+        units = 120
+      }
+
+      memory = {
+        dedicated = 4096
+      }
+
+      features = {
+        fuse = true
+      }
 
       mount_point = [
         {
@@ -91,11 +131,21 @@ locals {
     }
 
     nixarr = merge({
-      cores       = 4
-      cpuunits    = 90
-      memory      = 12288
-      rootfs_size = 24
-      swap        = 2048
+      cpu = {
+        cores = 4
+        units = 90
+        limit = 200
+      }
+
+      memory = {
+        dedicated = 12288
+        swap      = 2048
+      }
+
+      disk = {
+        size = 24
+      }
+
       mount_point = {
         volume        = "fast"
         path          = "/data/media"
@@ -106,11 +156,23 @@ locals {
     }, local.container_rocm_acceleration)
 
     nixcloud = {
-      cores       = 8
-      cpuunits    = 110
-      memory      = 16384
-      swap        = 4096
-      rootfs_size = 32
+      cpu = {
+        cores = 8
+        units = 110
+      }
+
+      memory = {
+        dedicated = 16384
+        swap      = 4096
+      }
+
+      disk = {
+        size = 32
+      }
+
+      features = {
+        fuse = true
+      }
 
       mount_point = {
         # TODO: dont hardcode the volume name
@@ -123,10 +185,20 @@ locals {
     }
 
     nixmon = {
-      cores    = 2
-      cpuunits = 75
-      memory   = 8192
-      swap     = 2048
+      cpu = {
+        cores = 2
+        units = 75
+      }
+
+      memory = {
+        dedicated = 8192
+        swap      = 2048
+      }
+
+      features = {
+        fuse = true
+      }
+
       mount_point = [
         {
           volume        = "fast:subvol-108-disk-0"
@@ -146,11 +218,21 @@ locals {
     }
 
     nixai = (merge({
-      cores       = 16
-      cpuunits    = 75
-      memory      = 24576
-      rootfs_size = 96
-      swap        = 2048
+      cpu = {
+        cores = 16
+        units = 75
+        limit = 100
+      }
+
+      memory = {
+        dedicated = 24576
+        swap      = 2048
+      }
+
+      disk = {
+        size = 96
+      }
+
       mount_point = {
         volume = "fast:subvol-103-disk-0"
         path   = "/var/lib/hermes"
@@ -160,10 +242,18 @@ locals {
     }, local.container_rocm_acceleration))
 
     nixstor = {
-      cores       = 8
-      cpuunits    = 100
-      memory      = 8192
-      rootfs_size = 16
+      cpu = {
+        cores = 8
+        units = 100
+      }
+
+      memory = {
+        dedicated = 8192
+      }
+
+      disk = {
+        size = 16
+      }
       mount_point = {
         volume = "fast"
         path   = "/var/lib/seaweedfs"
@@ -173,10 +263,19 @@ locals {
     }
 
     nixdb = {
-      cores       = 4
-      cpuunits    = 100
-      memory      = 4096
-      rootfs_size = 16
+      cpu = {
+        cores = 4
+        units = 100
+      }
+
+      memory = {
+        dedicated = 4096
+      }
+
+      disk = {
+        size = 16
+      }
+
       mount_point = [
         {
           volume        = "fast"
@@ -196,24 +295,35 @@ locals {
     }
 
     nixauth = {
-      cores       = 2
-      cpuunits    = 100
-      memory      = 1024
-      rootfs_size = 8
-      mount_point = {
-        volume        = "fast"
-        path          = "/var/lib/kanidm"
-        size          = "4G"
-        backup        = true
-        mount_options = local.secure_mount_options
+      cpu = {
+        cores = 2
+        units = 100
       }
-      mount_point = {
-        volume        = "fast"
-        path          = "/var/lib/kanidm/backup"
-        size          = "4G"
-        backup        = false
-        mount_options = local.secure_mount_options
+
+      memory = {
+        dedicated = 1024
       }
+
+      disk = {
+        size = 8
+      }
+
+      mount_point = [
+        {
+          volume        = "fast"
+          path          = "/var/lib/kanidm"
+          size          = "4G"
+          backup        = true
+          mount_options = local.secure_mount_options
+        },
+        {
+          volume        = "fast"
+          path          = "/var/lib/kanidm/backup"
+          size          = "4G"
+          backup        = false
+          mount_options = local.secure_mount_options
+        }
+      ]
     }
   }
 }
@@ -313,13 +423,14 @@ resource "proxmox_virtual_environment_container" "containers" {
   }
 
   cpu {
-    cores = each.value.cores
-    units = each.value.cpuunits
+    cores = lookup(lookup(each.value, "cpu", {}), "cores", local.container_defaults.cpu.cores)
+    limit = lookup(lookup(each.value, "cpu", {}), "limit", local.container_defaults.cpu.limit)
+    units = lookup(lookup(each.value, "cpu", {}), "units", local.container_defaults.cpu.units)
   }
 
   memory {
-    dedicated = lookup(each.value, "memory", local.container_defaults.memory)
-    swap      = lookup(each.value, "swap", local.container_defaults.swap)
+    dedicated = lookup(lookup(each.value, "memory", {}), "dedicated", local.container_defaults.memory.dedicated)
+    swap      = lookup(lookup(each.value, "memory", {}), "swap", local.container_defaults.memory.swap)
   }
 
   features {
@@ -329,7 +440,7 @@ resource "proxmox_virtual_environment_container" "containers" {
 
   disk {
     datastore_id = "local-zfs"
-    size         = lookup(each.value, "rootfs_size", local.container_defaults.rootfs_size)
+    size         = lookup(lookup(each.value, "disk", {}), "size", local.container_defaults.disk.size)
   }
 
   dynamic "mount_point" {

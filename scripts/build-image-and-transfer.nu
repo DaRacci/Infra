@@ -1,5 +1,4 @@
-#!/usr/bin/env nix-shell
-#!nix-shell -i nushell -p lix scp
+#!/usr/bin/env nu
 
 use lib.nu *
 
@@ -16,7 +15,8 @@ def main [
 ] {
   let repo_ref = get_flake_ref
   let output_path = $"nixosConfigurations.($hostName).config.formats.($IMAGE_FORMAT)";
-  let image_path = nix build $"($repo_ref)#($output_path)" ...$BUILD_ARGS;
+  let image_dir = nix build $"($repo_ref)#($output_path)" --quiet ...$BUILD_ARGS --no-link --print-out-paths;
+  let image_path = ls $image_dir | get name | where { $in | str ends-with ".tar.xz" } | first;
 
   scp $image_path $"root@($TRANSFER_HOST):($TRANSFER_DIR)/($hostName).tar.xz";
 }

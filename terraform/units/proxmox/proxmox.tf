@@ -14,6 +14,20 @@ locals {
 
   secure_mount_options = ["noatime", "lazytime", "nodev", "noexec", "nosuid"]
 
+  container_settings = {
+    for name, cfg in local.container_configs :
+    name => merge(
+      {
+        for section, defaults in local.container_defaults :
+        section => merge(defaults, try(cfg[section], {}))
+      },
+      {
+        for section, val in cfg :
+        section => val if !can(local.container_defaults[section])
+      }
+    )
+  }
+
   # Default values for containers
   container_defaults = {
     cpu = {
@@ -400,7 +414,7 @@ resource "proxmox_virtual_environment_container" "containers" {
   started       = true
 
   operating_system {
-    template_file_id = ""
+    template_file_id = "local:vztmpl/${each.key}.tar.xz"
     type             = "nixos"
   }
 
@@ -423,32 +437,28 @@ resource "proxmox_virtual_environment_container" "containers" {
   }
 
   cpu {
-    cores = lookup(lookup(each.value, "cpu", {}), "cores", local.container_defaults.cpu.cores)
-    limit = lookup(lookup(each.value, "cpu", {}), "limit", local.container_defaults.cpu.limit)
-    units = lookup(lookup(each.value, "cpu", {}), "units", local.container_defaults.cpu.units)
+    cores = local.container_settings[each.key].cpu.cores
+    limit = local.container_settings[each.key].cpu.limit
+    units = local.container_settings[each.key].cpu.units
   }
 
   memory {
-    dedicated = lookup(lookup(each.value, "memory", {}), "dedicated", local.container_defaults.memory.dedicated)
-    swap      = lookup(lookup(each.value, "memory", {}), "swap", local.container_defaults.memory.swap)
+    dedicated = local.container_settings[each.key].memory.dedicated
+    swap      = local.container_settings[each.key].memory.swap
   }
 
   features {
-    nesting = lookup(lookup(each.value, "features", {}), "nesting", local.container_defaults.features.nesting)
-    fuse    = lookup(lookup(each.value, "features", {}), "fuse", local.container_defaults.features.fuse)
+    nesting = local.container_settings[each.key].features.nesting
+    fuse    = local.container_settings[each.key].features.fuse
   }
 
   disk {
     datastore_id = "local-zfs"
-    size         = lookup(lookup(each.value, "disk", {}), "size", local.container_defaults.disk.size)
+    size         = local.container_settings[each.key].disk.size
   }
 
   dynamic "mount_point" {
-    for_each = try(
-      tolist(each.value.mount_point),
-      [each.value.mount_point],
-      []
-    )
+    for_each = try(flatten([each.value.mount_point]), [])
     content {
       volume        = mount_point.value.volume
       path          = mount_point.value.path
@@ -460,11 +470,7 @@ resource "proxmox_virtual_environment_container" "containers" {
   }
 
   dynamic "device_passthrough" {
-    for_each = try(
-      tolist(each.value.device_passthrogh),
-      [each.value.device_passthrogh],
-      []
-    )
+    for_each = try(flatten([each.value.device_passthrogh]), [])
     content {
       uid  = device_passthrough.value.uid
       gid  = device_passthrough.value.gid

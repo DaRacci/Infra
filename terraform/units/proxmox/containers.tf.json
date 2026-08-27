@@ -300,7 +300,7 @@
         ],
         "node_name": "proxmox",
         "operating_system": {
-          "template_file_id": "",
+          "template_file_id": "local:vztmpl/nixauth.tar.xz",
           "type": "nixos"
         },
         "start_on_boot": true,
@@ -458,7 +458,7 @@
         ],
         "node_name": "proxmox",
         "operating_system": {
-          "template_file_id": "",
+          "template_file_id": "local:vztmpl/nixdb.tar.xz",
           "type": "nixos"
         },
         "start_on_boot": true,
@@ -823,7 +823,7 @@
         ],
         "node_name": "proxmox",
         "operating_system": {
-          "template_file_id": "",
+          "template_file_id": "local:vztmpl/nixstor.tar.xz",
           "type": "nixos"
         },
         "start_on_boot": true,

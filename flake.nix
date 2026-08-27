@@ -18,9 +18,6 @@
     devenv.url = "github:cachix/devenv";
     treefmt-nix.url = "github:numtide/treefmt-nix";
     flake-root.url = "github:srid/flake-root";
-    # Source of truth for the nix-config hosts; consumed by the proxmox
-    # container generator so host details come from a locked input ref
-    # instead of scripts fetching at plan time.
     nix-config.url = "github:DaRacci/nix-config";
   };
 

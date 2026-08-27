@@ -1,16 +1,9 @@
-# Source of truth for LXC containers.
-# Consumed by the flake output `proxmoxContainersJson`, which renders this to
-# terraform/units/proxmox/containers.tf.json (auto-loaded by Terraform).
+# This file gets rendered to `terraform/units/proxmox/containers.tf.json`.
 #
-# Every container starts from `defaults`; overrides are deep-merged on top
-# (lib.recursiveUpdate). Lists REPLACE rather than merge, so mount_point /
-# device_passthrough are always wholesale definitions.
+# Every container starts from `defaults`; overrides are deep-merged on top.
+# Lists REPLACE rather than merge, so mount_point / device_passthrough are always wholesale definitions.
 {
   lib,
-  # Matches the legacy `""` value baked into remote state for existing
-  # containers. Override per-container for new-style templates; changing it
-  # for an existing container forces recreate.
-  legacyTemplateFileId ? "",
 }:
 let
   secureMountOptions = [
@@ -44,7 +37,7 @@ let
     started = true;
 
     operating_system = {
-      template_file_id = legacyTemplateFileId;
+      template_file_id = "";
       type = "nixos";
     };
 
@@ -99,7 +92,28 @@ let
     device_passthrough = [ ];
   };
 
-  container = name: overrides: lib.recursiveUpdate defaults ({ initialization.hostname = name; } // overrides);
+  # Legacy Containers without a template_file_id,
+  # their remote state has `""` baked in, so they must keep it to avoid forced recreation.
+  legacyContainers = [
+    "nixai"
+    "nixarr"
+    "nixcloud"
+    "nixdev"
+    "nixio"
+    "nixmon"
+    "nixserv"
+  ];
+
+  container =
+    name: overrides:
+    lib.recursiveUpdate defaults (
+      {
+        initialization.hostname = name;
+        operating_system.template_file_id =
+          if lib.elem name legacyContainers then "" else "local:vztmpl/${name}.tar.xz";
+      }
+      // overrides
+    );
 in
 {
   nixserv = container "nixserv" {
@@ -107,7 +121,9 @@ in
       cores = 8;
       units = 80;
     };
+
     memory.dedicated = 8192;
+
     mount_point = [
       {
         volume = "local-zfs";
@@ -123,9 +139,11 @@ in
       cores = 8;
       units = 105;
     };
+
     memory.dedicated = 16384;
     disk.size = 32;
     features.fuse = true;
+
     mount_point = [
       {
         volume = "local-zfs";
@@ -141,8 +159,10 @@ in
       cores = 6;
       units = 120;
     };
+
     memory.dedicated = 4096;
     features.fuse = true;
+
     mount_point = [
       {
         volume = "local-zfs:subvol-105-disk-1";
@@ -165,11 +185,15 @@ in
       units = 90;
       limit = 200;
     };
+
     memory = {
       dedicated = 12288;
       swap = 2048;
     };
+
     disk.size = 24;
+    device_passthrough = rocmPassthrough;
+
     mount_point = [
       {
         volume = "fast";
@@ -179,7 +203,6 @@ in
         mount_options = [ "noatime" ];
       }
     ];
-    device_passthrough = rocmPassthrough;
   };
 
   nixcloud = container "nixcloud" {
@@ -187,15 +210,17 @@ in
       cores = 8;
       units = 110;
     };
+
     memory = {
       dedicated = 16384;
       swap = 4096;
     };
+
     disk.size = 32;
     features.fuse = true;
+
     mount_point = [
       {
-        # TODO: dont hardcode the volume name
         volume = "/fast/subvol-106-disk-0";
         path = "/mnt/media/";
         read_only = true;
@@ -213,11 +238,14 @@ in
       cores = 2;
       units = 75;
     };
+
     memory = {
       dedicated = 8192;
       swap = 2048;
     };
+
     features.fuse = true;
+
     mount_point = [
       {
         volume = "fast:subvol-108-disk-0";
@@ -242,11 +270,15 @@ in
       units = 75;
       limit = 100;
     };
+
     memory = {
       dedicated = 24576;
       swap = 2048;
     };
+
     disk.size = 96;
+    device_passthrough = rocmPassthrough;
+
     mount_point = [
       {
         volume = "fast:subvol-103-disk-0";
@@ -255,7 +287,6 @@ in
         backup = true;
       }
     ];
-    device_passthrough = rocmPassthrough;
   };
 
   nixstor = container "nixstor" {
@@ -263,8 +294,10 @@ in
       cores = 8;
       units = 100;
     };
+
     memory.dedicated = 8192;
     disk.size = 16;
+
     mount_point = [
       {
         volume = "fast";
@@ -280,8 +313,10 @@ in
       cores = 4;
       units = 100;
     };
+
     memory.dedicated = 4096;
     disk.size = 16;
+
     mount_point = [
       {
         volume = "fast";
@@ -305,8 +340,10 @@ in
       cores = 2;
       units = 100;
     };
+
     memory.dedicated = 1024;
     disk.size = 8;
+
     mount_point = [
       {
         volume = "fast";

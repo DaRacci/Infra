@@ -146,6 +146,8 @@
               "terraform/secrets.yaml"
               "terraform/host-keys.yaml"
               "terraform/.terraform.lock.hcl"
+              # Generated from containers.nix; jq output is already stable.
+              "terraform/units/proxmox/containers.tf.json"
             ];
           };
         };

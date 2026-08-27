@@ -40,39 +40,29 @@ resource "terraform_data" "nixos_configurations" {
 }
 
 resource "terraform_data" "init_after_creation" {
-  for_each = toset(local.container_names)
+  # Keyed by the resource objects themselves so each instance depends only on
+  # its own container, not on every container in the unit.
+  for_each = local.containers_by_name
+
+  provisioner "file" {
+    source      = "${local.repo_root}/scripts/init-host.sh"
+    destination = "/tmp/init-host.sh"
+
+    connection {
+      type = "ssh"
+      user = "root"
+      host = local.proxmox_host
+    }
+  }
 
   provisioner "remote-exec" {
     inline = [
-      "LXC_ID=$(pct list | grep \"${each.key}\" | awk '{print $1}')",
-      "[ -z \"$LXC_ID\" ] && echo \"Container not found\" && exit 1",
-      "LXC_CONF=/etc/pve/lxc/\"$LXC_ID\".conf",
-
-      #region Ensure the TUN device is available in the LXC containers for WireGuard/Tailscale
-      "VALUE='lxc.cgroup.devices.allow: c 10:200 rwm' && grep -qxF -- \"$VALUE\" \"$LXC_CONF\" || echo \"$VALUE\" >> \"$LXC_CONF\"",
-      "VALUE='lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file' && grep -qxF -- \"$VALUE\" \"$LXC_CONF\" || echo \"$VALUE\" >> \"$LXC_CONF\"",
-      #endregion
-
-      "pct start \"$LXC_ID\"",
-      "while [ $(pct status \"$LXC_ID\" | grep \"running\" | wc -l) -eq 0 ]; do sleep 1; done",
-
-      #region Input the SSH Private key into the LXC container
-      # Once the Container started for the first time,
-      # we need to input its SSH Private key into the stdinput, followed by Ctrl+D to continue.
-      # This is required so we don't build the image with the SSH Private key in it.
-
-      # Ensure that the Dtach session is created before sending the SSH Private key
-      "CONSOLE_FILE=/var/run/dtach/vzctlconsole\"$LXC_ID\"",
-      "[ -e \"$CONSOLE_FILE\" ] || dtach -n \"$CONSOLE_FILE\" lxc-console -n \"$LXC_ID\" -t 0 -e -1",
-
-      # Send the SSH Private key to the LXC container followed by Ctrl+D
-      # Use the full path so we don't use the bash built-in echo
-      "/usr/bin/echo -ne \"${data.sops_file.ssh_keys.data["SSH_PRIVATE_KEYS.${each.key}"]}\\n\\x04\" | dtach -p \"$CONSOLE_FILE\"",
-      #endregion
-
-      #region Do a rebuild to ensure proper configuration
-      "/usr/bin/echo -ne \"nixos-rebuild switch --flake github:DaRacci/nix-config#${each.key} --impure --accept-flake-config\" | dtach -p \"$CONSOLE_FILE\""
-      #endregion
+      "chmod +x /tmp/init-host.sh",
+      # Key is piped via stdin so it never appears in argv or the process list.
+      # printf %s avoids echo's backslash/flag quirks; the key is single-quoted
+      # inline, which is safe because sops-managed keys contain no single quotes.
+      "printf '%s' '${data.sops_file.ssh_keys.data["SSH_PRIVATE_KEYS.${each.key}"]}' | /tmp/init-host.sh ${each.key}",
+      "rm -f /tmp/init-host.sh",
     ]
 
     connection {
@@ -84,19 +74,6 @@ resource "terraform_data" "init_after_creation" {
 
   triggers_replace = [
     # Due to the migration from the previous proxmox provider to the new one, ids changed from "<node>:lxc:<id>" to just "<id>".
-    replace(local.containers_by_name[each.key].id, "/.*\\//", "")
-  ]
-
-  depends_on = [
-    proxmox_virtual_environment_container.nixserv,
-    proxmox_virtual_environment_container.nixdev,
-    proxmox_virtual_environment_container.nixio,
-    proxmox_virtual_environment_container.nixarr,
-    proxmox_virtual_environment_container.nixcloud,
-    proxmox_virtual_environment_container.nixmon,
-    proxmox_virtual_environment_container.nixai,
-    proxmox_virtual_environment_container.nixstor,
-    proxmox_virtual_environment_container.nixdb,
-    proxmox_virtual_environment_container.nixauth,
+    replace(each.value.id, "/.*\\//", "")
   ]
 }

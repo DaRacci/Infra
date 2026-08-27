@@ -1,0 +1,835 @@
+{
+  "locals": {
+    "all_containers": [
+      "${proxmox_virtual_environment_container.nixai}",
+      "${proxmox_virtual_environment_container.nixarr}",
+      "${proxmox_virtual_environment_container.nixauth}",
+      "${proxmox_virtual_environment_container.nixcloud}",
+      "${proxmox_virtual_environment_container.nixdb}",
+      "${proxmox_virtual_environment_container.nixdev}",
+      "${proxmox_virtual_environment_container.nixio}",
+      "${proxmox_virtual_environment_container.nixmon}",
+      "${proxmox_virtual_environment_container.nixserv}",
+      "${proxmox_virtual_environment_container.nixstor}"
+    ]
+  },
+  "moved": [
+    {
+      "from": "proxmox_virtual_environment_container.containers[\"nixai\"]",
+      "to": "proxmox_virtual_environment_container.nixai"
+    },
+    {
+      "from": "proxmox_virtual_environment_container.containers[\"nixarr\"]",
+      "to": "proxmox_virtual_environment_container.nixarr"
+    },
+    {
+      "from": "proxmox_virtual_environment_container.containers[\"nixauth\"]",
+      "to": "proxmox_virtual_environment_container.nixauth"
+    },
+    {
+      "from": "proxmox_virtual_environment_container.containers[\"nixcloud\"]",
+      "to": "proxmox_virtual_environment_container.nixcloud"
+    },
+    {
+      "from": "proxmox_virtual_environment_container.containers[\"nixdb\"]",
+      "to": "proxmox_virtual_environment_container.nixdb"
+    },
+    {
+      "from": "proxmox_virtual_environment_container.containers[\"nixdev\"]",
+      "to": "proxmox_virtual_environment_container.nixdev"
+    },
+    {
+      "from": "proxmox_virtual_environment_container.containers[\"nixio\"]",
+      "to": "proxmox_virtual_environment_container.nixio"
+    },
+    {
+      "from": "proxmox_virtual_environment_container.containers[\"nixmon\"]",
+      "to": "proxmox_virtual_environment_container.nixmon"
+    },
+    {
+      "from": "proxmox_virtual_environment_container.containers[\"nixserv\"]",
+      "to": "proxmox_virtual_environment_container.nixserv"
+    },
+    {
+      "from": "proxmox_virtual_environment_container.containers[\"nixstor\"]",
+      "to": "proxmox_virtual_environment_container.nixstor"
+    }
+  ],
+  "resource": {
+    "proxmox_virtual_environment_container": {
+      "nixai": {
+        "console": {
+          "enabled": true,
+          "tty_count": 2,
+          "type": "console"
+        },
+        "cpu": {
+          "cores": 16,
+          "limit": 100,
+          "units": 75
+        },
+        "device_passthrough": [
+          {
+            "gid": 26,
+            "mode": "0660",
+            "path": "/dev/dri/renderD128",
+            "uid": 0
+          },
+          {
+            "gid": 303,
+            "mode": "0660",
+            "path": "/dev/kfd",
+            "uid": 0
+          }
+        ],
+        "disk": {
+          "datastore_id": "local-zfs",
+          "size": 96
+        },
+        "features": {
+          "fuse": false,
+          "nesting": true
+        },
+        "initialization": {
+          "hostname": "nixai",
+          "ip_config": [
+            {
+              "ipv4": [
+                {
+                  "address": "dhcp"
+                }
+              ],
+              "ipv6": [
+                {
+                  "address": "dhcp"
+                }
+              ]
+            }
+          ]
+        },
+        "memory": {
+          "dedicated": 24576,
+          "swap": 2048
+        },
+        "mount_point": [
+          {
+            "acl": false,
+            "backup": true,
+            "mount_options": null,
+            "path": "/var/lib/hermes",
+            "read_only": false,
+            "size": "64G",
+            "volume": "fast:subvol-103-disk-0"
+          }
+        ],
+        "network_interface": [
+          {
+            "bridge": "vmbr0",
+            "name": "eth0"
+          }
+        ],
+        "node_name": "proxmox",
+        "operating_system": {
+          "template_file_id": "",
+          "type": "nixos"
+        },
+        "start_on_boot": true,
+        "started": true,
+        "unprivileged": true
+      },
+      "nixarr": {
+        "console": {
+          "enabled": true,
+          "tty_count": 2,
+          "type": "console"
+        },
+        "cpu": {
+          "cores": 4,
+          "limit": 200,
+          "units": 90
+        },
+        "device_passthrough": [
+          {
+            "gid": 26,
+            "mode": "0660",
+            "path": "/dev/dri/renderD128",
+            "uid": 0
+          },
+          {
+            "gid": 303,
+            "mode": "0660",
+            "path": "/dev/kfd",
+            "uid": 0
+          }
+        ],
+        "disk": {
+          "datastore_id": "local-zfs",
+          "size": 24
+        },
+        "features": {
+          "fuse": false,
+          "nesting": true
+        },
+        "initialization": {
+          "hostname": "nixarr",
+          "ip_config": [
+            {
+              "ipv4": [
+                {
+                  "address": "dhcp"
+                }
+              ],
+              "ipv6": [
+                {
+                  "address": "dhcp"
+                }
+              ]
+            }
+          ]
+        },
+        "memory": {
+          "dedicated": 12288,
+          "swap": 2048
+        },
+        "mount_point": [
+          {
+            "acl": false,
+            "backup": false,
+            "mount_options": [
+              "noatime"
+            ],
+            "path": "/data/media",
+            "read_only": false,
+            "size": "4156G",
+            "volume": "fast"
+          }
+        ],
+        "network_interface": [
+          {
+            "bridge": "vmbr0",
+            "name": "eth0"
+          }
+        ],
+        "node_name": "proxmox",
+        "operating_system": {
+          "template_file_id": "",
+          "type": "nixos"
+        },
+        "start_on_boot": true,
+        "started": true,
+        "unprivileged": true
+      },
+      "nixauth": {
+        "console": {
+          "enabled": true,
+          "tty_count": 2,
+          "type": "console"
+        },
+        "cpu": {
+          "cores": 2,
+          "limit": 0,
+          "units": 100
+        },
+        "device_passthrough": [],
+        "disk": {
+          "datastore_id": "local-zfs",
+          "size": 8
+        },
+        "features": {
+          "fuse": false,
+          "nesting": true
+        },
+        "initialization": {
+          "hostname": "nixauth",
+          "ip_config": [
+            {
+              "ipv4": [
+                {
+                  "address": "dhcp"
+                }
+              ],
+              "ipv6": [
+                {
+                  "address": "dhcp"
+                }
+              ]
+            }
+          ]
+        },
+        "memory": {
+          "dedicated": 1024,
+          "swap": 0
+        },
+        "mount_point": [
+          {
+            "acl": false,
+            "backup": true,
+            "mount_options": [
+              "noatime",
+              "lazytime",
+              "nodev",
+              "noexec",
+              "nosuid"
+            ],
+            "path": "/var/lib/kanidm",
+            "read_only": false,
+            "size": "4G",
+            "volume": "fast"
+          },
+          {
+            "acl": false,
+            "backup": false,
+            "mount_options": [
+              "noatime",
+              "lazytime",
+              "nodev",
+              "noexec",
+              "nosuid"
+            ],
+            "path": "/var/lib/kanidm/backup",
+            "read_only": false,
+            "size": "4G",
+            "volume": "fast"
+          }
+        ],
+        "network_interface": [
+          {
+            "bridge": "vmbr0",
+            "name": "eth0"
+          }
+        ],
+        "node_name": "proxmox",
+        "operating_system": {
+          "template_file_id": "",
+          "type": "nixos"
+        },
+        "start_on_boot": true,
+        "started": true,
+        "unprivileged": true
+      },
+      "nixcloud": {
+        "console": {
+          "enabled": true,
+          "tty_count": 2,
+          "type": "console"
+        },
+        "cpu": {
+          "cores": 8,
+          "limit": 0,
+          "units": 110
+        },
+        "device_passthrough": [],
+        "disk": {
+          "datastore_id": "local-zfs",
+          "size": 32
+        },
+        "features": {
+          "fuse": true,
+          "nesting": true
+        },
+        "initialization": {
+          "hostname": "nixcloud",
+          "ip_config": [
+            {
+              "ipv4": [
+                {
+                  "address": "dhcp"
+                }
+              ],
+              "ipv6": [
+                {
+                  "address": "dhcp"
+                }
+              ]
+            }
+          ]
+        },
+        "memory": {
+          "dedicated": 16384,
+          "swap": 4096
+        },
+        "mount_point": [
+          {
+            "acl": false,
+            "backup": false,
+            "mount_options": [
+              "noatime",
+              "lazytime"
+            ],
+            "path": "/mnt/media/",
+            "read_only": true,
+            "size": null,
+            "volume": "/fast/subvol-106-disk-0"
+          }
+        ],
+        "network_interface": [
+          {
+            "bridge": "vmbr0",
+            "name": "eth0"
+          }
+        ],
+        "node_name": "proxmox",
+        "operating_system": {
+          "template_file_id": "",
+          "type": "nixos"
+        },
+        "start_on_boot": true,
+        "started": true,
+        "unprivileged": true
+      },
+      "nixdb": {
+        "console": {
+          "enabled": true,
+          "tty_count": 2,
+          "type": "console"
+        },
+        "cpu": {
+          "cores": 4,
+          "limit": 0,
+          "units": 100
+        },
+        "device_passthrough": [],
+        "disk": {
+          "datastore_id": "local-zfs",
+          "size": 16
+        },
+        "features": {
+          "fuse": false,
+          "nesting": true
+        },
+        "initialization": {
+          "hostname": "nixdb",
+          "ip_config": [
+            {
+              "ipv4": [
+                {
+                  "address": "dhcp"
+                }
+              ],
+              "ipv6": [
+                {
+                  "address": "dhcp"
+                }
+              ]
+            }
+          ]
+        },
+        "memory": {
+          "dedicated": 4096,
+          "swap": 0
+        },
+        "mount_point": [
+          {
+            "acl": false,
+            "backup": true,
+            "mount_options": [
+              "noatime",
+              "lazytime",
+              "nodev",
+              "noexec",
+              "nosuid"
+            ],
+            "path": "/var/lib/postgresql",
+            "read_only": false,
+            "size": "64G",
+            "volume": "fast"
+          },
+          {
+            "acl": false,
+            "backup": false,
+            "mount_options": [
+              "noatime",
+              "lazytime",
+              "nodev",
+              "noexec",
+              "nosuid"
+            ],
+            "path": "/var/lib/postgresql/backup",
+            "read_only": false,
+            "size": "64G",
+            "volume": "fast"
+          }
+        ],
+        "network_interface": [
+          {
+            "bridge": "vmbr0",
+            "name": "eth0"
+          }
+        ],
+        "node_name": "proxmox",
+        "operating_system": {
+          "template_file_id": "",
+          "type": "nixos"
+        },
+        "start_on_boot": true,
+        "started": true,
+        "unprivileged": true
+      },
+      "nixdev": {
+        "console": {
+          "enabled": true,
+          "tty_count": 2,
+          "type": "console"
+        },
+        "cpu": {
+          "cores": 8,
+          "limit": 0,
+          "units": 105
+        },
+        "device_passthrough": [],
+        "disk": {
+          "datastore_id": "local-zfs",
+          "size": 32
+        },
+        "features": {
+          "fuse": true,
+          "nesting": true
+        },
+        "initialization": {
+          "hostname": "nixdev",
+          "ip_config": [
+            {
+              "ipv4": [
+                {
+                  "address": "dhcp"
+                }
+              ],
+              "ipv6": [
+                {
+                  "address": "dhcp"
+                }
+              ]
+            }
+          ]
+        },
+        "memory": {
+          "dedicated": 16384,
+          "swap": 0
+        },
+        "mount_point": [
+          {
+            "acl": false,
+            "backup": false,
+            "mount_options": null,
+            "path": "/var/lib/coder",
+            "read_only": false,
+            "size": "128G",
+            "volume": "local-zfs"
+          }
+        ],
+        "network_interface": [
+          {
+            "bridge": "vmbr0",
+            "name": "eth0"
+          }
+        ],
+        "node_name": "proxmox",
+        "operating_system": {
+          "template_file_id": "",
+          "type": "nixos"
+        },
+        "start_on_boot": true,
+        "started": true,
+        "unprivileged": true
+      },
+      "nixio": {
+        "console": {
+          "enabled": true,
+          "tty_count": 2,
+          "type": "console"
+        },
+        "cpu": {
+          "cores": 6,
+          "limit": 0,
+          "units": 120
+        },
+        "device_passthrough": [],
+        "disk": {
+          "datastore_id": "local-zfs",
+          "size": 16
+        },
+        "features": {
+          "fuse": true,
+          "nesting": true
+        },
+        "initialization": {
+          "hostname": "nixio",
+          "ip_config": [
+            {
+              "ipv4": [
+                {
+                  "address": "dhcp"
+                }
+              ],
+              "ipv6": [
+                {
+                  "address": "dhcp"
+                }
+              ]
+            }
+          ]
+        },
+        "memory": {
+          "dedicated": 4096,
+          "swap": 0
+        },
+        "mount_point": [
+          {
+            "acl": false,
+            "backup": false,
+            "mount_options": null,
+            "path": "/var/lib/minio/data",
+            "read_only": false,
+            "size": "512G",
+            "volume": "local-zfs:subvol-105-disk-1"
+          },
+          {
+            "acl": false,
+            "backup": false,
+            "mount_options": null,
+            "path": "/var/lib/seaweedfs",
+            "read_only": false,
+            "size": "512G",
+            "volume": "fast"
+          }
+        ],
+        "network_interface": [
+          {
+            "bridge": "vmbr0",
+            "name": "eth0"
+          }
+        ],
+        "node_name": "proxmox",
+        "operating_system": {
+          "template_file_id": "",
+          "type": "nixos"
+        },
+        "start_on_boot": true,
+        "started": true,
+        "unprivileged": true
+      },
+      "nixmon": {
+        "console": {
+          "enabled": true,
+          "tty_count": 2,
+          "type": "console"
+        },
+        "cpu": {
+          "cores": 2,
+          "limit": 0,
+          "units": 75
+        },
+        "device_passthrough": [],
+        "disk": {
+          "datastore_id": "local-zfs",
+          "size": 16
+        },
+        "features": {
+          "fuse": true,
+          "nesting": true
+        },
+        "initialization": {
+          "hostname": "nixmon",
+          "ip_config": [
+            {
+              "ipv4": [
+                {
+                  "address": "dhcp"
+                }
+              ],
+              "ipv6": [
+                {
+                  "address": "dhcp"
+                }
+              ]
+            }
+          ]
+        },
+        "memory": {
+          "dedicated": 8192,
+          "swap": 2048
+        },
+        "mount_point": [
+          {
+            "acl": false,
+            "backup": true,
+            "mount_options": [
+              "noatime",
+              "lazytime",
+              "nodev",
+              "noexec",
+              "nosuid"
+            ],
+            "path": "/var/lib/prometheus2",
+            "read_only": false,
+            "size": "32G",
+            "volume": "fast:subvol-108-disk-0"
+          },
+          {
+            "acl": false,
+            "backup": false,
+            "mount_options": [
+              "noatime",
+              "lazytime",
+              "nodev",
+              "noexec",
+              "nosuid"
+            ],
+            "path": "/var/lib/loki",
+            "read_only": false,
+            "size": "8G",
+            "volume": "fast:subvol-108-disk-1"
+          }
+        ],
+        "network_interface": [
+          {
+            "bridge": "vmbr0",
+            "name": "eth0"
+          }
+        ],
+        "node_name": "proxmox",
+        "operating_system": {
+          "template_file_id": "",
+          "type": "nixos"
+        },
+        "start_on_boot": true,
+        "started": true,
+        "unprivileged": true
+      },
+      "nixserv": {
+        "console": {
+          "enabled": true,
+          "tty_count": 2,
+          "type": "console"
+        },
+        "cpu": {
+          "cores": 8,
+          "limit": 0,
+          "units": 80
+        },
+        "device_passthrough": [],
+        "disk": {
+          "datastore_id": "local-zfs",
+          "size": 16
+        },
+        "features": {
+          "fuse": false,
+          "nesting": true
+        },
+        "initialization": {
+          "hostname": "nixserv",
+          "ip_config": [
+            {
+              "ipv4": [
+                {
+                  "address": "dhcp"
+                }
+              ],
+              "ipv6": [
+                {
+                  "address": "dhcp"
+                }
+              ]
+            }
+          ]
+        },
+        "memory": {
+          "dedicated": 8192,
+          "swap": 0
+        },
+        "mount_point": [
+          {
+            "acl": false,
+            "backup": false,
+            "mount_options": null,
+            "path": "/nix/store",
+            "read_only": false,
+            "size": "128G",
+            "volume": "local-zfs"
+          }
+        ],
+        "network_interface": [
+          {
+            "bridge": "vmbr0",
+            "name": "eth0"
+          }
+        ],
+        "node_name": "proxmox",
+        "operating_system": {
+          "template_file_id": "",
+          "type": "nixos"
+        },
+        "start_on_boot": true,
+        "started": true,
+        "unprivileged": true
+      },
+      "nixstor": {
+        "console": {
+          "enabled": true,
+          "tty_count": 2,
+          "type": "console"
+        },
+        "cpu": {
+          "cores": 8,
+          "limit": 0,
+          "units": 100
+        },
+        "device_passthrough": [],
+        "disk": {
+          "datastore_id": "local-zfs",
+          "size": 16
+        },
+        "features": {
+          "fuse": false,
+          "nesting": true
+        },
+        "initialization": {
+          "hostname": "nixstor",
+          "ip_config": [
+            {
+              "ipv4": [
+                {
+                  "address": "dhcp"
+                }
+              ],
+              "ipv6": [
+                {
+                  "address": "dhcp"
+                }
+              ]
+            }
+          ]
+        },
+        "memory": {
+          "dedicated": 8192,
+          "swap": 0
+        },
+        "mount_point": [
+          {
+            "acl": false,
+            "backup": false,
+            "mount_options": null,
+            "path": "/var/lib/seaweedfs",
+            "read_only": false,
+            "size": "1T",
+            "volume": "fast"
+          }
+        ],
+        "network_interface": [
+          {
+            "bridge": "vmbr0",
+            "name": "eth0"
+          }
+        ],
+        "node_name": "proxmox",
+        "operating_system": {
+          "template_file_id": "",
+          "type": "nixos"
+        },
+        "start_on_boot": true,
+        "started": true,
+        "unprivileged": true
+      }
+    }
+  }
+}

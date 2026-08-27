@@ -18,6 +18,10 @@
     devenv.url = "github:cachix/devenv";
     treefmt-nix.url = "github:numtide/treefmt-nix";
     flake-root.url = "github:srid/flake-root";
+    # Source of truth for the nix-config hosts; consumed by the proxmox
+    # container generator so host details come from a locked input ref
+    # instead of scripts fetching at plan time.
+    nix-config.url = "github:DaRacci/nix-config";
   };
 
   outputs =
@@ -50,6 +54,16 @@
             };
           };
 
+          # Renders terraform/units/proxmox/containers.nix to Terraform JSON.
+          # Consumed by `tf-generate-containers` (devenv task + terragrunt
+          # before_hook). nix-config input is available here for future use,
+          # e.g. deriving host attributes from the locked ref.
+          packages.proxmoxContainersJson =
+            let
+              tfDir = ./terraform/units/proxmox;
+            in
+            pkgs.callPackage (tfDir + "/generate.nix") { };
+
           devenv.shells.default = {
             # Fixes https://github.com/cachix/devenv/issues/528
             containers = lib.mkForce { };
@@ -63,6 +77,15 @@
               openssh
               terragrunt
             ];
+
+            scripts.tf-generate-containers.exec = ''
+              nix build --no-link --print-out-paths ".#proxmoxContainersJson" \
+                | xargs cat > "$DEVENV_ROOT/terraform/units/proxmox/containers.tf.json"
+            '';
+
+            tasks."tf:generate-containers" = {
+              exec = "tf-generate-containers";
+            };
 
             languages = {
               nix.enable = true;

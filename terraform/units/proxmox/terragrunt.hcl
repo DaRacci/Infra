@@ -2,6 +2,18 @@ include "root" {
   path = find_in_parent_folders("root.hcl")
 }
 
+# Regenerate containers.tf.json from containers.nix before every plan/apply
+# so the config Terraform sees is never stale. The store path is printed;
+# terraform_source-style copying isn't needed since we cat it into place via
+# the devenv task for local use, and here we rely on the generated file being
+# present in the unit dir.
+terraform {
+  before_hook "generate_containers" {
+    commands = get_terraform_commands_that_need_vars()
+    execute  = ["${get_repo_root()}/scripts/generate-containers.sh"]
+  }
+}
+
 generate "backend" {
   path      = "backend.tf"
   if_exists = "overwrite_terragrunt"

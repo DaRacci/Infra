@@ -230,6 +230,16 @@ in
           "lazytime"
         ];
       }
+      {
+        volume = "/run/bluez/bus.sock";
+        path = "/run/host-bluez/bus.sock";
+        backup = false;
+        mount_options = [
+          "bind"
+          "optional"
+          "create=file"
+        ];
+      }
     ];
   };
 

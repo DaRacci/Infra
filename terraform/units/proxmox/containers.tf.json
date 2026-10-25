@@ -360,6 +360,19 @@
             "read_only": true,
             "size": null,
             "volume": "/fast/subvol-106-disk-0"
+          },
+          {
+            "acl": false,
+            "backup": false,
+            "mount_options": [
+              "bind",
+              "optional",
+              "create=file"
+            ],
+            "path": "/run/host-bluez/bus.sock",
+            "read_only": false,
+            "size": null,
+            "volume": "/run/bluez/bus.sock"
           }
         ],
         "network_interface": [

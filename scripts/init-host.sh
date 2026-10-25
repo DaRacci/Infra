@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
 # Initializes a freshly created LXC container on the Proxmox host:
-# adds TUN device passthrough, starts it, injects its SSH private key via the
-# console, then runs a nixos-rebuild to apply the proper configuration.
+# adds TUN device passthrough, provisions its SSH private key into the container filesystem,
+# starts it, then runs a nixos-rebuild to apply proper configuration.
 #
 # Must run ON the Proxmox host (uses pct/lxc-console/dtach directly).
 #
-# Usage: init-host.sh <hostname>
-# The SSH private key is read from stdin, so it never appears in argv or the
-# process list.
+# Usage: init-host.sh <hostname> <ssh_key_file>
+# The SSH private key file is copied into the container before startup,
+# allowing nix-config's activation scripts to detect it and skip interactive prompt.
 set -euo pipefail
 
-if [ "$#" -ne 1 ]; then
-  echo "Usage: $0 <hostname> < ssh_private_key" >&2
+if [ "$#" -ne 2 ]; then
+  echo "Usage: $0 <hostname> <ssh_key_file>" >&2
   exit 1
 fi
 
 HOSTNAME="$1"
-SSH_PRIVATE_KEY="$(cat)"
+SSH_KEY_FILE="$2"
 
-if [ -z "$SSH_PRIVATE_KEY" ]; then
-  echo "No SSH private key received on stdin" >&2
+if [ ! -f "$SSH_KEY_FILE" ]; then
+  echo "SSH key file not found: $SSH_KEY_FILE" >&2
   exit 1
 fi
 
@@ -38,18 +38,40 @@ grep -qxF -- "$VALUE" "$LXC_CONF" || echo "$VALUE" >> "$LXC_CONF"
 VALUE='lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file'
 grep -qxF -- "$VALUE" "$LXC_CONF" || echo "$VALUE" >> "$LXC_CONF"
 
+# Get the actual rootfs path from container config.
+# Different storage backends have different mount points.
+# pct config output format: "rootfs: /path/to/rootfs,size=10G" for dir-based storage
+get_rootfs_path() {
+  pct config "$LXC_ID" | grep -oP '^rootfs: \K[^,]+' || return 1
+}
+
+LXC_ROOTFS=$(get_rootfs_path) || {
+  echo "Warning: Could not determine container rootfs path from config, using fallback" >&2
+  LXC_ROOTFS="/var/lib/lxc/$LXC_ID/rootfs"
+}
+
+if [ ! -d "$LXC_ROOTFS" ]; then
+  echo "Error: Container rootfs directory does not exist: $LXC_ROOTFS" >&2
+  exit 1
+fi
+
+# Provision SSH private key into container before start.
+# The container's activation scripts check /var/lib/provisioning/ssh/ssh_host_ed25519_key
+# If it exists, they skip the interactive console prompt.
+PROVISION_DIR="$LXC_ROOTFS/var/lib/provisioning/ssh"
+mkdir -p "$PROVISION_DIR"
+cp "$SSH_KEY_FILE" "$PROVISION_DIR/ssh_host_ed25519_key"
+chmod 600 "$PROVISION_DIR/ssh_host_ed25519_key"
+rm -f "$SSH_KEY_FILE"
+
 pct start "$LXC_ID"
 until pct status "$LXC_ID" | grep -q "running"; do
   sleep 1
 done
 
-# Ensure that the Dtach session is created before sending the SSH Private key
+# Ensure that the Dtach session is created for the nixos-rebuild command
 CONSOLE_FILE="/var/run/dtach/vzctlconsole$LXC_ID"
 [ -e "$CONSOLE_FILE" ] || dtach -n "$CONSOLE_FILE" lxc-console -n "$LXC_ID" -t 0 -e -1
-
-# Send the SSH Private key to the LXC container followed by Ctrl+D
-# Use the full path so we don't use the bash built-in echo
-/usr/bin/echo -ne "$SSH_PRIVATE_KEY\n\x04" | dtach -p "$CONSOLE_FILE"
 
 # Do a rebuild to ensure proper configuration
 /usr/bin/echo -ne "nixos-rebuild switch --flake github:DaRacci/nix-config#$HOSTNAME --impure --accept-flake-config" | dtach -p "$CONSOLE_FILE"

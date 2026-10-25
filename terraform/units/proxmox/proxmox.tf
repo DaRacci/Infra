@@ -55,14 +55,21 @@ resource "terraform_data" "init_after_creation" {
     }
   }
 
+  provisioner "file" {
+    content     = data.sops_file.ssh_keys.data["SSH_PRIVATE_KEYS.${each.key}"]
+    destination = "/tmp/.init-key-${each.key}"
+
+    connection {
+      type = "ssh"
+      user = "root"
+      host = local.proxmox_host
+    }
+  }
+
   provisioner "remote-exec" {
     inline = [
       "chmod +x /tmp/init-host.sh",
-      # Key is piped via stdin so it never appears in argv or the process list.
-      # printf %s avoids echo's backslash/flag quirks; the key is single-quoted
-      # inline, which is safe because sops-managed keys contain no single quotes.
-      "printf '%s' '${data.sops_file.ssh_keys.data["SSH_PRIVATE_KEYS.${each.key}"]}' | /tmp/init-host.sh ${each.key}",
-      "rm -f /tmp/init-host.sh",
+      "/tmp/init-host.sh ${each.key} /tmp/.init-key-${each.key}",
     ]
 
     connection {

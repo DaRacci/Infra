@@ -65,7 +65,7 @@
         },
         "cpu": {
           "cores": 16,
-          "limit": 100,
+          "limit": 70,
           "units": 75
         },
         "device_passthrough": [
@@ -120,6 +120,15 @@
             "read_only": false,
             "size": "64G",
             "volume": "fast:subvol-103-disk-0"
+          },
+          {
+            "acl": false,
+            "backup": false,
+            "mount_options": null,
+            "path": "/nix-agent",
+            "read_only": false,
+            "size": "64G",
+            "volume": "fast:subvol-103-disk-1"
           }
         ],
         "network_interface": [
@@ -135,6 +144,10 @@
         },
         "start_on_boot": true,
         "started": true,
+        "startup": {
+          "order": 50,
+          "up_delay": 30
+        },
         "unprivileged": true
       },
       "nixarr": {
@@ -164,7 +177,7 @@
         ],
         "disk": {
           "datastore_id": "local-zfs",
-          "size": 24
+          "size": 48
         },
         "features": {
           "fuse": false,
@@ -217,6 +230,10 @@
         },
         "start_on_boot": true,
         "started": true,
+        "startup": {
+          "order": 50,
+          "up_delay": 60
+        },
         "unprivileged": true
       },
       "nixauth": {
@@ -388,6 +405,10 @@
         },
         "start_on_boot": true,
         "started": true,
+        "startup": {
+          "order": 30,
+          "up_delay": 15
+        },
         "unprivileged": true
       },
       "nixdb": {
@@ -492,7 +513,7 @@
         "device_passthrough": [],
         "disk": {
           "datastore_id": "local-zfs",
-          "size": 32
+          "size": 48
         },
         "features": {
           "fuse": true,
@@ -543,6 +564,10 @@
         },
         "start_on_boot": true,
         "started": true,
+        "startup": {
+          "order": 40,
+          "up_delay": 30
+        },
         "unprivileged": true
       },
       "nixio": {
@@ -619,6 +644,9 @@
         },
         "start_on_boot": true,
         "started": true,
+        "startup": {
+          "order": 1
+        },
         "unprivileged": true
       },
       "nixmon": {
@@ -707,6 +735,10 @@
         },
         "start_on_boot": true,
         "started": true,
+        "startup": {
+          "order": 10,
+          "up_delay": 5
+        },
         "unprivileged": true
       },
       "nixserv": {

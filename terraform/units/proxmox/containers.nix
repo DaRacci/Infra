@@ -141,7 +141,7 @@ in
     };
 
     memory.dedicated = 16384;
-    disk.size = 32;
+    disk.size = 48;
     features.fuse = true;
 
     mount_point = [
@@ -152,6 +152,11 @@ in
         backup = false;
       }
     ];
+
+    startup = {
+      up_delay = 30;
+      order = 40;
+    };
   };
 
   nixio = container "nixio" {
@@ -177,6 +182,10 @@ in
         backup = false;
       }
     ];
+
+    startup = {
+      order = 1;
+    };
   };
 
   nixarr = container "nixarr" {
@@ -191,7 +200,7 @@ in
       swap = 2048;
     };
 
-    disk.size = 24;
+    disk.size = 48;
     device_passthrough = rocmPassthrough;
 
     mount_point = [
@@ -203,6 +212,11 @@ in
         mount_options = [ "noatime" ];
       }
     ];
+
+    startup = {
+      up_delay = 60;
+      order = 50;
+    };
   };
 
   nixcloud = container "nixcloud" {
@@ -241,6 +255,11 @@ in
         ];
       }
     ];
+
+    startup = {
+      up_delay = 15;
+      order = 30;
+    };
   };
 
   nixmon = container "nixmon" {
@@ -272,13 +291,18 @@ in
         mount_options = secureMountOptions;
       }
     ];
+
+    startup = {
+      up_delay = 5;
+      order = 10;
+    };
   };
 
   nixai = container "nixai" {
     cpu = {
       cores = 16;
       units = 75;
-      limit = 100;
+      limit = 70;
     };
 
     memory = {
@@ -296,7 +320,18 @@ in
         size = "64G";
         backup = true;
       }
+      {
+        volume = "fast:subvol-103-disk-1";
+        path = "/nix-agent";
+        size = "64G";
+        backup = false;
+      }
     ];
+
+    startup = {
+      up_delay = 30;
+      order = 50;
+    };
   };
 
   nixstor = container "nixstor" {

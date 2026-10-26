@@ -80,7 +80,8 @@ resource "terraform_data" "init_after_creation" {
   }
 
   triggers_replace = [
-    # Due to the migration from the previous proxmox provider to the new one, ids changed from "<node>:lxc:<id>" to just "<id>".
+    # Due to the migration from the previous proxmox provider to the new one,
+    # ids changed from "<node>:lxc:<id>" to just "<id>".
     replace(each.value.id, "/.*\\//", "")
   ]
 }

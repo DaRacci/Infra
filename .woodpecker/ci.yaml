@@ -1,10 +1,14 @@
 when:
-  - event: [push, pull_request]
-    path:
+  - event: manual
+  - event: push
+    branch: master
+    path: &changes
       include:
         - "flake.*"
         - "terraform/**"
         - ".woodpecker/**"
+  - event: pull_request
+    path: *changes
 
 matrix:
   UNIT:
@@ -17,6 +21,7 @@ steps:
   - name: Format
     image: registry.racci.dev/lix-woodpecker:latest
     pull: true
+    depends_on: []
     commands: nix fmt -- --ci
 
   - name: Terraform Validate

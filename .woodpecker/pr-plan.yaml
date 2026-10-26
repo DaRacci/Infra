@@ -1,6 +1,5 @@
-# Post per-unit Terraform plan as PR comment
-# Required secrets:
-#   - ssh_age_key, tf_cloud_token, github_token
+# Post Terraform plan as PR comment
+# Required secrets: SSH_AGE_KEY, TF_CLOUD_TOKEN, FORGEJO_TOKEN
 
 when:
   - event: pull_request
@@ -13,49 +12,43 @@ matrix:
     - proxmox
 
 steps:
-  - name: setup-sops
-    image: registry.racci.dev/lix-woodpecker:latest
-    pull: true
-    environment:
-      SSH_AGE_KEY:
-        from_secret: ssh_age_key
-    commands: |
-      mkdir -p ~/.config/sops/age
-      echo "$SSH_AGE_KEY" > ~/.config/sops/age/keys.txt
-
   - name: terraform-plan
     image: registry.racci.dev/lix-woodpecker:latest
     pull: true
     environment:
+      SSH_AGE_KEY:
+        from_secret: SSH_AGE_KEY
       TF_TOKEN_app_terraform_io:
-        from_secret: tf_cloud_token
+        from_secret: TF_CLOUD_TOKEN
       SOPS_AGE_KEY_FILE: /root/.config/sops/age/keys.txt
     directory: terraform/units/${UNIT}
     commands: |
+      mkdir -p ~/.config/sops/age
+      echo "$SSH_AGE_KEY" > ~/.config/sops/age/keys.txt
       nix develop --impure --command terragrunt plan -no-color 2>&1 | tee /tmp/plan.txt || true
 
   - name: comment-pr
-    image: alpine:latest
+    image: registry.racci.dev/lix-woodpecker:latest
+    pull: true
     environment:
-      GITHUB_TOKEN:
-        from_secret: github_token
+      FORGEJO_TOKEN:
+        from_secret: forgejo_token
     commands: |
-      apk add --no-cache github-cli
       cat > /tmp/comment.md << 'COMMENT_EOF'
-        ## Terraform Plan: ${UNIT}
+      ## Terraform Plan
 
-        <details>
-        <summary>Click to expand plan output</summary>
+      <details>
+      <summary>Click to expand plan output</summary>
 
-        ```hcl
+      ```hcl
       COMMENT_EOF
-
       cat /tmp/plan.txt >> /tmp/comment.md
-
       cat >> /tmp/comment.md << 'COMMENT_EOF'
-        ```
+      ```
 
-        </details>
+      </details>
       COMMENT_EOF
-
-      gh pr comment ${CI_COMMIT_PULL_REQUEST} --body-file /tmp/comment.md --repo ${CI_REPO}
+      curl -s -X POST "$CI_FORGE_URL/api/v1/repos/$CI_REPO/issues/$CI_COMMIT_PULL_REQUEST/comments" \
+        -H "Authorization: token $FORGEJO_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$(jq -Rs '{body: .}' < /tmp/comment.md)"
